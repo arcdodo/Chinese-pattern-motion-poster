@@ -1607,14 +1607,18 @@ function extractFrom(from){
   items.sort((a,b)=>b.w-a.w);const r=apportion(items.map(i=>i.w),100);
   // 保证每色至少 1%
   for(let i=0;i<r.length;i++)if(r[i]<1){const j=r.indexOf(Math.max(...r));r[j]--;r[i]=1}
-  const roles=["主色","辅色","辅色","点缀","点缀","点缀","点缀","点缀"];
-  S.extracted={from,colors:items.map((it,i)=>({name:it.name,hex:it.hex,ratio:r[i],role:i===0?"主色":roles[i]||"点缀",dE:it.dE,raw:it.raw}))};
+  // 角色：面积最大的为底色，其余中最深的为勾线，剩下按面积依次为主色、辅色、点缀
+  const cs=items.map((it,i)=>({name:it.name,hex:it.hex,ratio:r[i],role:"",dE:it.dE,raw:it.raw}));
+  if(cs.length){cs[0].role="底色";const rest=cs.slice(1);const Lh=h=>rgbLab(...hexRgb(h))[0];
+    if(rest.length>=3){let d=rest[0];for(const c of rest)if(Lh(c.hex)<Lh(d.hex))d=c;d.role="勾线"}
+    let n=0;for(const c of rest){if(c.role)continue;c.role=n===0?"主色":n===1?"辅色":"点缀";n++}}
+  S.extracted={from,colors:cs};
   renderExtract();
 }
 function renderExtract(){const ex=S.extracted;if(!ex){$("extResult").innerHTML=`<p class="hint">上传参考图后，按面积占比提取主色；勾选吸附时，每个颜色替换为色库中最接近的传统色，比例按实际面积四舍五入到整数。</p>`;return}
   $("extResult").innerHTML=`<p class="label">提取结果 · ${ex.from==="ref"?"参考图":"当前画面"}</p>${barHtml(ex.colors)}
   <div style="margin:8px 0">${ex.colors.map(c=>`<div class="custom-row" style="grid-template-columns:22px minmax(0,1fr) auto"><span class="dot" style="background:${c.hex}"></span>
-    <span class="nm">${c.name}<small>${c.hex.toUpperCase()}${$("snap").checked?` · 原色 ${c.raw.toUpperCase()} · ΔE ${c.dE.toFixed(1)}`:""}</small></span><b style="font-family:var(--f-mono);font-size:12px">${c.ratio}%</b></div>`).join("")}</div>
+    <span class="nm">${c.name} · ${c.role}<small>${c.hex.toUpperCase()}${$("snap").checked?` · 原色 ${c.raw.toUpperCase()} · ΔE ${c.dE.toFixed(1)}`:""}</small></span><b style="font-family:var(--f-mono);font-size:12px">${c.ratio}%</b></div>`).join("")}</div>
   <div class="btn-row"><button class="btn primary" id="btnUseExt">应用此配色</button><button class="btn" id="btnEditExt">转入自配编辑</button></div>`;
   $("btnUseExt").onclick=()=>{S.palette={name:"图像取色",note:"",colors:ex.colors.map(c=>({name:c.name,hex:c.hex,ratio:c.ratio,role:c.role}))};renderPresets();recolor();toast("已应用取色配色")};
   $("btnEditExt").onclick=()=>{S.custom=ex.colors.map(c=>({name:c.name,hex:c.hex,ratio:c.ratio,role:c.role})).slice(0,8);renderCustom();selectTab("lib")};
