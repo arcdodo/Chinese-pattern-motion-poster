@@ -133,12 +133,35 @@ body.show.idle{cursor:none}
 .fxsty[aria-pressed=true]{border-color:#2c4a7a;box-shadow:inset 0 0 0 2px #2c4a7a}.fxsty canvas{width:100%;aspect-ratio:1;display:block}
 .fxsty b{font-size:13px}.fxsty small{font-size:11px;color:#5b6573;line-height:1.3}
 .fxsty i{position:absolute;top:5px;left:5px;font-style:normal;font-size:10px;padding:0 6px;border-radius:8px;background:#2c4a7a;color:#fff;line-height:16px}
+/* 中国传统色 · 规范配比 · 面积核对 */
+.cnNm{font:400 10px var(--sans);font-style:normal;color:var(--fg);max-width:54px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cnPals{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto;padding-right:2px}
+.cnPal{display:grid;gap:5px;text-align:left;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--chip);color:var(--fg);cursor:pointer;font:600 12px var(--sans)}
+.cnPal[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.cnPal small{color:var(--muted);font-weight:400;font-size:11px;line-height:1.5}
+.cnBar{display:flex;height:12px;border-radius:2px;overflow:hidden;outline:1px solid var(--line)}
+.cnBar i{display:block;height:100%}
+.cnLibBox summary{cursor:pointer;font-size:12px;color:var(--muted)}
+#cnLib{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+#cnLib b{font:600 11px var(--sans);color:var(--muted)}
+.cnSw{display:grid;grid-template-columns:repeat(auto-fill,minmax(22px,1fr));gap:3px}
+.cnSw button{aspect-ratio:1;border:1px solid rgba(0,0,0,.14);border-radius:3px;padding:0;cursor:pointer;min-width:0}
+.cnSw button:hover{outline:2px solid var(--fg);outline-offset:1px}
+.cnMeter{display:grid;grid-template-columns:32px minmax(0,1fr);gap:5px 8px;align-items:center;font-size:11px;color:var(--muted)}
+.cnRows{display:flex;flex-direction:column;gap:4px}
+.cnRow{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px}
+.cnRow i{width:14px;height:14px;border-radius:2px;border:1px solid var(--line)}
+.cnRow span:last-child{font:11px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.cnFile{display:inline-flex;align-items:center;justify-content:center}
+.mono{font-family:var(--mono)}
+#hsStageHost{width:100%;max-width:1000px;align-self:flex-start}
 </style>
 
 <div class="app">
   <div class="stage" id="stage">
     <span class="badge" id="badge"></span>
     <canvas id="cv" aria-label="动态纹样海报画布"></canvas>
+    <div id="hsStageHost" hidden></div>
   </div>
 
   <aside class="panel">
@@ -151,7 +174,13 @@ body.show.idle{cursor:none}
         <button data-s="trad" aria-pressed="false">中国纹样</button>
         <button data-s="zj" aria-pressed="false">藻井宝相花</button>
         <button data-s="jz" aria-pressed="true">剪纸</button>
+        <button data-s="hs" aria-pressed="false">纹样换色</button>
       </div>
+    </div>
+
+    <div class="group" id="hsGroup" hidden>
+      <h2>纹样换色</h2>
+      <div id="hsPanelHost"></div>
     </div>
 
     <div class="group" id="tradGroup">
@@ -283,7 +312,7 @@ body.show.idle{cursor:none}
       </div>
     </div>
 
-    <div class="group">
+    <div class="group" id="ratioGroup">
       <h2>画幅</h2>
       <div class="seg" id="ratioSeg">
         <button data-r="3:4">3:4</button>
@@ -306,7 +335,7 @@ body.show.idle{cursor:none}
       <div class="row gridOnly"><span>留白间隔</span><input type="range" id="gap" min="0" max="2" step="1" value="1"><output id="gapO"></output></div>
     </div>
 
-    <div class="group">
+    <div class="group" id="motionGroup">
       <h2>运动</h2>
       <div class="row"><span>速度</span><input type="range" id="speed" min="0" max="2.5" step="0.05" value="1"><output id="speedO"></output></div>
       <div class="row"><span>呼吸</span><input type="range" id="breathe" min="0" max="0.4" step="0.01" value="0.12"><output id="breatheO"></output></div>
@@ -317,7 +346,7 @@ body.show.idle{cursor:none}
       <label class="check"><input type="checkbox" id="hover" checked>鼠标互动</label>
     </div>
 
-    <div class="group">
+    <div class="group" id="colorGroup">
       <h2>颜色</h2>
       <h2>配色规范</h2>
       <div class="seg" id="schemeSeg"></div>
@@ -332,20 +361,34 @@ body.show.idle{cursor:none}
         <button data-p="窗花">窗花</button>
       </div>
       <div class="swatches" id="swatches">
-        <label><input type="color" data-ci="0">C1</label>
-        <label><input type="color" data-ci="1">C2</label>
-        <label><input type="color" data-ci="2">C3</label>
-        <label><input type="color" data-ci="3">C4</label>
-        <label><input type="color" id="bgc">底色</label>
+        <label><input type="color" data-ci="0">C1<em class="cnNm" id="cnNm0"></em></label>
+        <label><input type="color" data-ci="1">C2<em class="cnNm" id="cnNm1"></em></label>
+        <label><input type="color" data-ci="2">C3<em class="cnNm" id="cnNm2"></em></label>
+        <label><input type="color" data-ci="3">C4<em class="cnNm" id="cnNm3"></em></label>
+        <label><input type="color" id="bgc">底色<em class="cnNm" id="cnNm4"></em></label>
       </div>
+      <h2>中国传统色 · 规范配比</h2>
+      <p class="hint">色值取自「中国色」数据（据《色谱》整理）。点选方案按角色上色：底色→地，主色→C2 主纹，辅色→C4 辅纹，勾线→C1 骨架，点缀→C3。</p>
+      <div class="cnPals" id="cnPals"></div>
+      <h2>传统色卡</h2>
+      <div class="seg" id="cnTarget"><button type="button" data-i="0">C1</button><button type="button" data-i="1" aria-pressed="true">C2</button><button type="button" data-i="2">C3</button><button type="button" data-i="3">C4</button><button type="button" data-i="4">底色</button></div>
+      <details class="cnLibBox"><summary>先选上面要改的色位，再从 147 个传统色里点选</summary><div id="cnLib"></div></details>
+      <p class="hint mono" id="cnTip"></p>
+      <h2>图像取色</h2>
+      <label class="btn cnFile">上传参考图…<input type="file" id="cnImg" accept="image/*" hidden></label>
+      <div id="cnExt" class="group" style="gap:8px"></div>
+      <h2>面积核对 · 当前帧</h2>
+      <div class="cnMeter"><span>规范</span><div class="cnBar" id="cnBarSpec"></div><span>实测</span><div class="cnBar" id="cnBarReal"></div></div>
+      <div class="cnRows" id="cnRows"></div>
+      <p class="hint" id="cnMeterNote">每秒采样一次当前帧。动态海报的面积会随动画起伏，这里如实显示当下的占比。</p>
     </div>
 
-    <div class="group">
+    <div class="group" id="textGroup">
       <h2>文字</h2>
       <input class="textin" id="ptext" placeholder="海报标题（可留空）" maxlength="40">
     </div>
 
-    <div class="group">
+    <div class="group" id="seedGroup">
       <h2>随机种子</h2>
       <div class="seedrow"><input id="seed" value="1234" inputmode="numeric"><button class="btn" id="dice">换一个</button></div>
       <div class="actions">
@@ -354,18 +397,19 @@ body.show.idle{cursor:none}
       </div>
     </div>
 
-    <div class="group">
+    <div class="group" id="showGroup">
       <h2>展示</h2>
       <button class="btn primary" id="showBtn">进入展示模式</button>
       <div class="kbd"><b>H</b>展示模式 / 返回面板<br><b>F</b>全屏<br><b>空格</b>暂停 / 播放<br><b>R</b>换一个种子并重新生成</div>
     </div>
 
-    <div class="group">
+    <div class="group" id="exportGroup">
       <h2>导出</h2>
       <div class="actions">
         <button class="btn" id="png">当前帧 PNG</button>
         <button class="btn" id="json">复制参数</button>
       </div>
+      <label class="check"><input type="checkbox" id="cnStrict" checked>PNG 吸附到配色色值（叠晕、光晕的过渡色会归到最近的标准色）</label>
       <p class="hint">PNG 会在弹窗里显示，右键或长按即可保存；本地打开时会直接下载。</p>
     </div>
   </aside>
@@ -439,6 +483,1183 @@ body.show.idle{cursor:none}
   <div class="sheet" id="sheet"></div>
 </div>
 
+<template id="hsPanelTpl"><style>
+/* 布局：左为色源（传统配色 / 色卡 / 取色），中为画面与配比核对，右为映射与导出。像一张染坊的工作台。 */
+:host{display:block;
+  --paper:var(--bg);--sheet:var(--panel);--ink:var(--fg);--ink-2:var(--muted);--ink-3:var(--muted);--rule:var(--line);
+  --accent-ink:var(--panel);--seal:#c8452a;--ok:#2c8a5a;--warn:#b5741a;--bad:#c23b2e;--check-a:#e3e7e5;--check-b:#f4f6f5;
+  --f-display:"Noto Serif SC","Songti SC","STSong",serif;--f-body:var(--sans);--f-mono:var(--mono);
+  font-family:var(--sans);font-size:14px;line-height:1.55;color:var(--fg)}
+@media (prefers-color-scheme: dark){:host{--ok:#4cb784;--warn:#e0a54a;--bad:#ef6a5c;--seal:#e06a4c;--check-a:#22292c;--check-b:#1a2023}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+
+
+
+  font-family:var(--f-display);font-weight:900;font-size:15px;line-height:1.05;text-align:center;letter-spacing:.05em;flex:none}
+
+
+
+
+
+
+
+
+
+.panel{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;min-width:0}
+.panel-h{padding:12px 14px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.panel-h h2{font-family:var(--f-display);font-size:15px;margin:0;letter-spacing:.06em}
+.panel-b{padding:14px}
+
+.tabs{display:flex;border-bottom:1px solid var(--rule)}
+.tabs button{flex:1;background:none;border:0;padding:12px 6px 10px;font-family:var(--f-display);font-weight:600;font-size:14px;
+  color:var(--ink-3);border-bottom:2px solid transparent;letter-spacing:.06em}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--seal)}
+
+.label{font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;margin:0 0 8px;font-weight:500}
+.hint{font-size:12px;color:var(--ink-3);margin:0}
+
+/* 传统配色卡 */
+.pal-list{display:flex;flex-direction:column;gap:8px;max-height:640px;overflow:auto;padding:2px}
+.pal{display:block;width:100%;text-align:left;background:transparent;border:1px solid var(--rule);border-radius:8px;padding:10px 10px 9px}
+.pal:hover{border-color:var(--ink-3)}
+.pal[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.pal-name{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:7px}
+.pal-name b{font-family:var(--f-display);font-size:15px;letter-spacing:.06em}
+.pal-name span{font-size:11px;color:var(--ink-3)}
+.bar{display:flex;height:14px;border-radius:3px;overflow:hidden;outline:1px solid color-mix(in srgb,var(--ink) 10%,transparent)}
+.bar i{display:block;height:100%}
+.pal-chips{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:7px;font-size:11px;color:var(--ink-2)}
+.fit{display:inline-block;margin-top:7px;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.fit:empty{display:none}
+.fit-ok{color:var(--ok)}.fit-mid{color:var(--warn)}.fit-bad{color:var(--bad)}
+.pal-chips em{font-style:normal;font-family:var(--f-mono);color:var(--ink-3)}
+
+/* 色卡 */
+.lib-group{margin-bottom:12px}
+.lib-group h3{font-family:var(--f-display);font-size:13px;margin:0 0 6px;color:var(--ink-2);letter-spacing:.1em}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:4px}
+.sw{aspect-ratio:1;border-radius:4px;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);padding:0;max-width:100%}
+.sw:hover{transform:scale(1.08)}
+.lib-scroll{max-height:300px;overflow:auto;padding-right:4px}
+.tip{min-height:20px;font-size:12px;color:var(--ink-2);margin:6px 0 10px;font-family:var(--f-mono)}
+
+.custom-row{display:grid;grid-template-columns:22px minmax(0,1fr) 64px 24px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--rule)}
+.custom-row .dot{width:22px;height:22px;border-radius:4px;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent)}
+.custom-row .nm{min-width:0;font-size:13px}
+.custom-row .nm small{display:block;font-family:var(--f-mono);font-size:11px;color:var(--ink-3)}
+.custom-row input{width:64px;padding:4px 6px;border:1px solid var(--rule);border-radius:5px;background:var(--paper);text-align:right;font-family:var(--f-mono)}
+.x{border:0;background:none;color:var(--ink-3);font-size:16px;padding:0}
+.sum{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-size:13px}
+.sum b{font-family:var(--f-mono)}
+.sum .good{color:var(--ok)} .sum .badc{color:var(--bad)}
+
+.btn{border:1px solid var(--rule);background:var(--sheet);border-radius:7px;padding:7px 12px;font-size:13px}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+.drop{border:1.5px dashed var(--rule);border-radius:8px;padding:16px;text-align:center;color:var(--ink-2);font-size:13px;display:block;cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--ink)}
+.drop input{display:none}
+.ref-thumb{width:100%;max-height:160px;object-fit:contain;border-radius:6px;margin-top:10px;background:var(--paper)}
+.range-row{display:flex;align-items:center;gap:10px;margin:10px 0}
+.range-row label{font-size:13px;min-width:64px}
+.range-row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.range-row output{font-family:var(--f-mono);font-size:12px;min-width:30px;text-align:right}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0}
+.check input{accent-color:var(--accent)}
+
+/* 画面 */
+.stage-h{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:none;padding:6px 12px;font-size:13px;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.pat-row{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 0}
+.chip{border:1px solid var(--rule);background:none;border-radius:999px;padding:4px 12px;font-size:13px;font-family:var(--f-display)}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--sheet)}
+.stage{padding:14px;display:flex;flex-direction:column;gap:10px}
+.canvas-wrap{position:relative;border-radius:6px;overflow:hidden;
+  background-color:var(--check-b);background-image:linear-gradient(45deg,var(--check-a) 25%,transparent 25%,transparent 75%,var(--check-a) 75%),linear-gradient(45deg,var(--check-a) 25%,transparent 25%,transparent 75%,var(--check-a) 75%);
+  background-size:16px 16px;background-position:0 0,8px 8px;display:grid;place-items:center;min-height:240px}
+canvas#out{display:block;max-width:100%;height:auto;max-height:72vh}
+.stage-tools{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.busy{position:absolute;inset:auto 10px 10px auto;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:3px 10px;font-size:12px}
+
+/* 配比核对 */
+.verify{padding:14px;border-top:1px solid var(--rule)}
+.vbars{display:grid;grid-template-columns:56px minmax(0,1fr);gap:6px 10px;align-items:center;margin-bottom:12px;font-size:12px;color:var(--ink-2)}
+.vbars .bar{height:18px}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid currentColor}
+.status.s-ok{color:var(--ok)} .status.s-warn{color:var(--warn)} .status.s-bad{color:var(--bad)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{font-size:11px;font-weight:500;color:var(--ink-3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule);letter-spacing:.06em;white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td.num,th.num{text-align:right;font-family:var(--f-mono)}
+td .dot{display:inline-block;width:18px;height:18px;border-radius:4px;vertical-align:middle;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent)}
+td.name b{font-family:var(--f-display);font-weight:600}
+td.name small{color:var(--ink-3);margin-left:6px}
+.hex{font-family:var(--f-mono);background:none;border:0;padding:0;text-decoration:underline dotted;text-underline-offset:3px}
+.parts{white-space:normal;min-width:160px;font-size:12px;color:var(--ink-2)}
+.dev-0{color:var(--ok)} .dev-1{color:var(--warn)} .dev-2{color:var(--bad)}
+
+.ctrl .group{padding:14px;border-bottom:1px solid var(--rule)}
+.ctrl .group:last-child{border-bottom:0}
+.ctrl .seg{display:flex}
+.ctrl .seg button{flex:1}
+.mode-desc{font-size:12px;color:var(--ink-2);margin:8px 0 0;min-height:54px}
+
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 55%,transparent);display:grid;place-items:center;z-index:20;padding:20px}
+.overlay .box{background:var(--sheet);border-radius:10px;padding:16px;max-width:min(720px,100%);max-height:90vh;overflow:auto}
+.overlay img{max-width:100%;display:block;margin:10px 0;border-radius:6px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--sheet);padding:8px 16px;border-radius:7px;font-size:13px;z-index:30}
+@media (prefers-reduced-motion:reduce){.sw:hover{transform:none}}
+
+.panel{background:none;border:0;border-radius:0}
+.panel-b{padding:12px 0}
+.ctrl .group{padding:12px 0}
+.stage-h{padding:0 0 10px;border-bottom:0}
+.pat-row{padding:0 0 4px}
+#densRow{padding:0!important}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--sheet)}
+.pal-list{max-height:none}
+.lib-scroll{max-height:240px}
+.stagecard{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.stagecard .stage{padding:16px}
+canvas#out{max-height:calc(100vh - 360px)}
+.hs-note{font-size:12px;color:var(--ink-3);margin:0 0 12px;line-height:1.6}
+</style>
+<p class="hs-note">中国传统色逐像素换色：内置纹样按传统构件着色，也可上传自己的图像。色值取自「中国色」数据（据《色谱》整理），配比为本项目的设计规范。</p>
+<div class="stage-h">
+      <div class="seg" role="group" aria-label="换色对象">
+        <button aria-pressed="true" data-target="pattern" id="tgtPattern">内置纹样</button>
+        <button aria-pressed="false" data-target="upload" id="tgtUpload">我的图像</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="btn" for="tgtFile" style="cursor:pointer">上传图像…</label>
+        <input type="file" id="tgtFile" accept="image/*" hidden>
+      </div>
+    </div>
+    <div class="pat-row" id="patRow"></div>
+    <div class="range-row" id="densRow" style="padding:0 14px"><label for="density">密度</label><input type="range" id="density" min="1" max="6" value="2"><output id="densOut">2</output></div>
+    <section class="panel" aria-label="色源">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-preset" aria-selected="true" data-tab="preset">传统配色</button>
+      <button role="tab" id="tab-lib" aria-selected="false" data-tab="lib">色卡自配</button>
+      <button role="tab" id="tab-ext" aria-selected="false" data-tab="ext">图像取色</button>
+    </div>
+
+    <div class="panel-b" id="pane-preset">
+      <p class="label">配色方案 · 配比锁定</p>
+      <p class="hint" id="fitHint" style="margin:-2px 0 8px">纹样模式下，标签显示该配色套进当前纹样需要修边的面积：越小越贴合原有形制。</p>
+      <div class="pal-list" id="palList"></div>
+    </div>
+
+    <div class="panel-b" id="pane-lib" hidden>
+      <p class="label">传统色卡 · 点击加入自定义配色</p>
+      <div class="lib-scroll" id="lib"></div>
+      <div class="tip" id="libTip">悬停查看色名与色值</div>
+      <p class="label">自定义配色（2–8 色）</p>
+      <div id="customList"></div>
+      <div class="sum"><span>合计</span><b id="customSum">0%</b></div>
+      <div class="btn-row">
+        <button class="btn" id="btnEven">均分比例</button>
+        <button class="btn" id="btnFromCur">复制当前配色</button>
+        <button class="btn primary" id="btnApplyCustom" disabled>应用</button>
+      </div>
+    </div>
+
+    <div class="panel-b" id="pane-ext" hidden>
+      <p class="label">参考图像</p>
+      <label class="drop" id="refDrop">
+        <input type="file" id="refFile" accept="image/*">
+        点击或拖入参考图（照片、文物、海报等）
+      </label>
+      <img class="ref-thumb" id="refThumb" alt="参考图预览" hidden>
+      <div class="range-row"><label for="kSlider">色数</label><input type="range" id="kSlider" min="3" max="8" value="5"><output id="kOut">5</output></div>
+      <label class="check"><input type="checkbox" id="snap" checked> 吸附到最近的传统色（色值严格取自色库）</label>
+      <div class="btn-row">
+        <button class="btn" id="btnExtract" disabled>提取配色</button>
+        <button class="btn" id="btnExtractTarget">从当前画面取色</button>
+      </div>
+      <div id="extResult" style="margin-top:12px"></div>
+    </div>
+  </section><section class="panel ctrl" aria-label="映射与导出">
+    <div class="panel-h"><h2 id="ctrlTitle">纹样</h2></div>
+    <div class="group" id="patGroup">
+      <p class="label">形制规范</p>
+      <p class="mode-desc" id="patSpec"></p>
+      <label class="check"><input type="checkbox" id="calib" checked> 按配比校准形制参数</label>
+      <label class="check"><input type="checkbox" id="exact" checked> 精确修边（像素级配比）</label>
+      <p class="hint">校准只调花型大小、线宽与退晕宽度；修边让不足的颜色沿轮廓等距外扩补足面积。构件与结构不变。两项都关闭时按标准形制绘制，偏差如实显示。</p>
+      <p class="hint" id="fitNote" style="margin-top:6px"></p>
+      <div class="btn-row" style="margin-top:10px"><button class="btn" id="btnReseed" hidden>换一组冰裂</button></div>
+    </div>
+    <div class="group img-only">
+      <p class="label">映射方式</p>
+      <div class="seg" role="group" aria-label="映射方式">
+        <button aria-pressed="true" data-mode="strict">严格配比</button>
+        <button aria-pressed="false" data-mode="region">保形色块</button>
+      </div>
+      <p class="mode-desc" id="modeDesc"></p>
+    </div>
+    <div class="group img-only">
+      <p class="label">明度顺序</p>
+      <label class="check"><input type="checkbox" id="invert"> 反转（浅色落在暗部）</label>
+      <div class="range-row"><label for="texture">保留肌理</label><input type="range" id="texture" min="0" max="100" value="0"><output id="texOut">0</output></div>
+      <p class="hint" id="texNote">0 = 纯色值输出，像素色值与色卡完全一致。</p>
+    </div>
+    <div class="group">
+      <p class="label">导出</p>
+      <div class="btn-row">
+        <button class="btn primary" id="btnPng">导出 PNG</button>
+        <button class="btn" id="btnJson">导出配色 JSON</button>
+        <button class="btn" id="btnCopy">复制色值</button>
+        <button class="btn" id="btnToPoster">用作动态海报配色</button>
+      </div>
+      <p class="hint" style="margin-top:8px">纹样导出 2048px，每个像素都是色卡标准色（无抗锯齿混色）；图像按处理分辨率导出。JSON 含色名、HEX、RGB、规范与实测比例。</p>
+    </div>
+  </section></template>
+<template id="hsStageTpl"><style>
+/* 布局：左为色源（传统配色 / 色卡 / 取色），中为画面与配比核对，右为映射与导出。像一张染坊的工作台。 */
+:host{display:block;
+  --paper:var(--bg);--sheet:var(--panel);--ink:var(--fg);--ink-2:var(--muted);--ink-3:var(--muted);--rule:var(--line);
+  --accent-ink:var(--panel);--seal:#c8452a;--ok:#2c8a5a;--warn:#b5741a;--bad:#c23b2e;--check-a:#e3e7e5;--check-b:#f4f6f5;
+  --f-display:"Noto Serif SC","Songti SC","STSong",serif;--f-body:var(--sans);--f-mono:var(--mono);
+  font-family:var(--sans);font-size:14px;line-height:1.55;color:var(--fg)}
+@media (prefers-color-scheme: dark){:host{--ok:#4cb784;--warn:#e0a54a;--bad:#ef6a5c;--seal:#e06a4c;--check-a:#22292c;--check-b:#1a2023}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+
+
+
+  font-family:var(--f-display);font-weight:900;font-size:15px;line-height:1.05;text-align:center;letter-spacing:.05em;flex:none}
+
+
+
+
+
+
+
+
+
+.panel{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;min-width:0}
+.panel-h{padding:12px 14px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.panel-h h2{font-family:var(--f-display);font-size:15px;margin:0;letter-spacing:.06em}
+.panel-b{padding:14px}
+
+.tabs{display:flex;border-bottom:1px solid var(--rule)}
+.tabs button{flex:1;background:none;border:0;padding:12px 6px 10px;font-family:var(--f-display);font-weight:600;font-size:14px;
+  color:var(--ink-3);border-bottom:2px solid transparent;letter-spacing:.06em}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--seal)}
+
+.label{font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;margin:0 0 8px;font-weight:500}
+.hint{font-size:12px;color:var(--ink-3);margin:0}
+
+/* 传统配色卡 */
+.pal-list{display:flex;flex-direction:column;gap:8px;max-height:640px;overflow:auto;padding:2px}
+.pal{display:block;width:100%;text-align:left;background:transparent;border:1px solid var(--rule);border-radius:8px;padding:10px 10px 9px}
+.pal:hover{border-color:var(--ink-3)}
+.pal[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.pal-name{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:7px}
+.pal-name b{font-family:var(--f-display);font-size:15px;letter-spacing:.06em}
+.pal-name span{font-size:11px;color:var(--ink-3)}
+.bar{display:flex;height:14px;border-radius:3px;overflow:hidden;outline:1px solid color-mix(in srgb,var(--ink) 10%,transparent)}
+.bar i{display:block;height:100%}
+.pal-chips{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:7px;font-size:11px;color:var(--ink-2)}
+.fit{display:inline-block;margin-top:7px;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid currentColor}
+.fit:empty{display:none}
+.fit-ok{color:var(--ok)}.fit-mid{color:var(--warn)}.fit-bad{color:var(--bad)}
+.pal-chips em{font-style:normal;font-family:var(--f-mono);color:var(--ink-3)}
+
+/* 色卡 */
+.lib-group{margin-bottom:12px}
+.lib-group h3{font-family:var(--f-display);font-size:13px;margin:0 0 6px;color:var(--ink-2);letter-spacing:.1em}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:4px}
+.sw{aspect-ratio:1;border-radius:4px;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);padding:0;max-width:100%}
+.sw:hover{transform:scale(1.08)}
+.lib-scroll{max-height:300px;overflow:auto;padding-right:4px}
+.tip{min-height:20px;font-size:12px;color:var(--ink-2);margin:6px 0 10px;font-family:var(--f-mono)}
+
+.custom-row{display:grid;grid-template-columns:22px minmax(0,1fr) 64px 24px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--rule)}
+.custom-row .dot{width:22px;height:22px;border-radius:4px;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent)}
+.custom-row .nm{min-width:0;font-size:13px}
+.custom-row .nm small{display:block;font-family:var(--f-mono);font-size:11px;color:var(--ink-3)}
+.custom-row input{width:64px;padding:4px 6px;border:1px solid var(--rule);border-radius:5px;background:var(--paper);text-align:right;font-family:var(--f-mono)}
+.x{border:0;background:none;color:var(--ink-3);font-size:16px;padding:0}
+.sum{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-size:13px}
+.sum b{font-family:var(--f-mono)}
+.sum .good{color:var(--ok)} .sum .badc{color:var(--bad)}
+
+.btn{border:1px solid var(--rule);background:var(--sheet);border-radius:7px;padding:7px 12px;font-size:13px}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+.drop{border:1.5px dashed var(--rule);border-radius:8px;padding:16px;text-align:center;color:var(--ink-2);font-size:13px;display:block;cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--ink)}
+.drop input{display:none}
+.ref-thumb{width:100%;max-height:160px;object-fit:contain;border-radius:6px;margin-top:10px;background:var(--paper)}
+.range-row{display:flex;align-items:center;gap:10px;margin:10px 0}
+.range-row label{font-size:13px;min-width:64px}
+.range-row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.range-row output{font-family:var(--f-mono);font-size:12px;min-width:30px;text-align:right}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0}
+.check input{accent-color:var(--accent)}
+
+/* 画面 */
+.stage-h{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:none;padding:6px 12px;font-size:13px;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.pat-row{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 0}
+.chip{border:1px solid var(--rule);background:none;border-radius:999px;padding:4px 12px;font-size:13px;font-family:var(--f-display)}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--sheet)}
+.stage{padding:14px;display:flex;flex-direction:column;gap:10px}
+.canvas-wrap{position:relative;border-radius:6px;overflow:hidden;
+  background-color:var(--check-b);background-image:linear-gradient(45deg,var(--check-a) 25%,transparent 25%,transparent 75%,var(--check-a) 75%),linear-gradient(45deg,var(--check-a) 25%,transparent 25%,transparent 75%,var(--check-a) 75%);
+  background-size:16px 16px;background-position:0 0,8px 8px;display:grid;place-items:center;min-height:240px}
+canvas#out{display:block;max-width:100%;height:auto;max-height:72vh}
+.stage-tools{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.busy{position:absolute;inset:auto 10px 10px auto;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:3px 10px;font-size:12px}
+
+/* 配比核对 */
+.verify{padding:14px;border-top:1px solid var(--rule)}
+.vbars{display:grid;grid-template-columns:56px minmax(0,1fr);gap:6px 10px;align-items:center;margin-bottom:12px;font-size:12px;color:var(--ink-2)}
+.vbars .bar{height:18px}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid currentColor}
+.status.s-ok{color:var(--ok)} .status.s-warn{color:var(--warn)} .status.s-bad{color:var(--bad)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{font-size:11px;font-weight:500;color:var(--ink-3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule);letter-spacing:.06em;white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td.num,th.num{text-align:right;font-family:var(--f-mono)}
+td .dot{display:inline-block;width:18px;height:18px;border-radius:4px;vertical-align:middle;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent)}
+td.name b{font-family:var(--f-display);font-weight:600}
+td.name small{color:var(--ink-3);margin-left:6px}
+.hex{font-family:var(--f-mono);background:none;border:0;padding:0;text-decoration:underline dotted;text-underline-offset:3px}
+.parts{white-space:normal;min-width:160px;font-size:12px;color:var(--ink-2)}
+.dev-0{color:var(--ok)} .dev-1{color:var(--warn)} .dev-2{color:var(--bad)}
+
+.ctrl .group{padding:14px;border-bottom:1px solid var(--rule)}
+.ctrl .group:last-child{border-bottom:0}
+.ctrl .seg{display:flex}
+.ctrl .seg button{flex:1}
+.mode-desc{font-size:12px;color:var(--ink-2);margin:8px 0 0;min-height:54px}
+
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 55%,transparent);display:grid;place-items:center;z-index:20;padding:20px}
+.overlay .box{background:var(--sheet);border-radius:10px;padding:16px;max-width:min(720px,100%);max-height:90vh;overflow:auto}
+.overlay img{max-width:100%;display:block;margin:10px 0;border-radius:6px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--sheet);padding:8px 16px;border-radius:7px;font-size:13px;z-index:30}
+@media (prefers-reduced-motion:reduce){.sw:hover{transform:none}}
+
+.panel{background:none;border:0;border-radius:0}
+.panel-b{padding:12px 0}
+.ctrl .group{padding:12px 0}
+.stage-h{padding:0 0 10px;border-bottom:0}
+.pat-row{padding:0 0 4px}
+#densRow{padding:0!important}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--sheet)}
+.pal-list{max-height:none}
+.lib-scroll{max-height:240px}
+.stagecard{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.stagecard .stage{padding:16px}
+canvas#out{max-height:calc(100vh - 360px)}
+.hs-note{font-size:12px;color:var(--ink-3);margin:0 0 12px;line-height:1.6}
+</style>
+<div class="stagecard"><div class="stage">
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="out" width="720" height="720" aria-label="换色结果"></canvas>
+        <div class="busy" id="busy" hidden>计算中…</div>
+      </div>
+      <div class="stage-tools">
+        <span class="hint" id="targetInfo"></span>
+        <button class="btn" id="btnCompare" aria-pressed="false">按住看原图</button>
+      </div>
+    </div>
+    <div class="verify">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <h2 style="font-family:var(--f-display);font-size:15px;margin:0;letter-spacing:.06em" id="verifyTitle">配比核对</h2>
+        <span class="status s-ok" id="status">严格一致</span>
+      </div>
+      <div class="vbars">
+        <span>规范</span><div class="bar" id="barSpec"></div>
+        <span>实测</span><div class="bar" id="barReal"></div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>色名</th><th>HEX</th><th>RGB</th><th class="num">规范</th><th class="num">实测</th><th class="num">偏差</th><th id="partsTh">着色构件</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<div class="overlay" id="overlay" hidden>
+  <div class="box">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <b style="font-family:var(--f-display)">右键或长按图片另存为</b>
+      <button class="btn" id="ovClose">关闭</button>
+    </div>
+    <img id="ovImg" alt="导出的换色结果">
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div></template>
+<script>
+/* =================== 中国传统色数据（共用）===================
+   色值统一取自「中国色」数据（zhongguose.com，据中科院《色谱》整理）。
+   配比为本项目设定的设计规范：底色 / 主色 / 辅色 / 勾线 / 点缀。 */
+window.CNC=(()=>{
+const LIB = {
+  "红": [["朱红","#ed5126"],["银朱","#f43e06"],["大红","#f04b22"],["胭脂红","#f03f24"],["珊瑚红","#f04a3a"],["海棠红","#f03752"],["茶花红","#ee3f4d"],["唐菖蒲红","#de1c31"],["鹅冠红","#d11a2d"],["鹃顶红","#d42517"],["夕阳红","#de2a18"],["枫叶红","#c21f30"],["高粱红","#c02c38"],["玉红","#c04851"],["满江红","#a7535a"],["苋菜红","#a61b29"],["覆盆子红","#ac1f18"],["殷红","#82111f"],["枣红","#7c1823"],["赭石","#862617"],["品红","#ef3473"],["玫瑰红","#d2357d"],["牡丹粉红","#eea2a4"],["桃红","#f0ada0"],["淡绯","#f2cac9"],["藕荷","#edc3ae"],["豆沙","#481e1c"],["酱紫","#4d1018"]],
+  "黄橙": [["藤黄","#ffd111"],["雄黄","#ff9900"],["琥珀黄","#feba07"],["鹅掌黄","#fbb929"],["蜜黄","#fbb957"],["栀子黄","#ebb10d"],["姜黄","#e2c027"],["土黄","#d6a01d"],["芥黄","#d9a40e"],["杏黄","#f28e16"],["橘橙","#f97d1c"],["金黄","#f26b1f"],["柿红","#f2481b"],["麦秆黄","#f8df70"],["象牙黄","#f0d695"],["浅驼色","#e2c17c"],["沙石黄","#e5b751"],["凋叶棕","#e7a23f"],["苍黄","#806332"]],
+  "绿": [["石绿","#57c3c2"],["铜绿","#2bae85"],["竹绿","#1ba784"],["蓝绿","#12a182"],["青矾绿","#2c9678"],["孔雀绿","#229453"],["宫殿绿","#20894d"],["翠绿","#20a162"],["葱绿","#40a070"],["蛙绿","#45b787"],["薄荷绿","#207f4c"],["荷叶绿","#1a6840"],["粉绿","#83cbac"],["芽绿","#96c24e"],["苹果绿","#bacf65"],["嘉陵水绿","#add5a2"],["淡翠绿","#c6dfc8"],["苍绿","#223e36"],["深海绿","#1a3b32"],["油绿","#253d24"],["橄榄绿","#5e5314"],["苔绿","#887322"]],
+  "蓝": [["靛青","#1661ab"],["群青","#1772b4"],["景泰蓝","#2775b6"],["花青","#2376b7"],["品蓝","#2b73af"],["尼罗蓝","#2474b5"],["海涛蓝","#15559a"],["搪磁蓝","#11659a"],["天蓝","#1677b3"],["宝石蓝","#2486b9"],["釉蓝","#1781b5"],["孔雀蓝","#0eb0c9"],["翠蓝","#1e9eb3"],["海青","#22a2c3"],["碧青","#5cb3cc"],["星蓝","#93b5cf"],["晴山蓝","#8fb2c9"],["秋波蓝","#8abcd1"],["湖水蓝","#b0d5df"],["清水蓝","#93d5dc"],["云水蓝","#baccd9"],["远天蓝","#d0dfe6"],["海天蓝","#c6e6e8"],["苍蓝","#134857"],["钢青","#142334"],["鸽蓝","#1c2938"],["暗蓝","#101f30"]],
+  "紫": [["葛巾紫","#7e2065"],["青莲","#8b2671"],["苋菜紫","#9b1e64"],["牵牛紫","#681752"],["桔梗紫","#813c85"],["蕈紫","#815c94"],["槿紫","#806d9e"],["藤萝紫","#8076a3"],["山梗紫","#61649f"],["野菊紫","#525288"],["满天星紫","#2e317c"],["罗兰紫","#c08eaf"],["淡蓝紫","#a7a8bd"],["淡青紫","#e0c8d1"],["丁香淡紫","#e9d7df"],["古铜紫","#440e25"]],
+  "白": [["汉白玉","#f8f4ed"],["象牙白","#fffef8"],["雪白","#fffef9"],["月白","#eef7f2"],["鱼肚白","#f7f4ed"],["银白","#f1f0ed"],["乳白","#f9f4dc"],["米色","#f9e9cd"],["荷花白","#fbecde"],["粉白","#fbf2e3"],["芡食白","#e2e1e4"],["云峰白","#d8e3e7"],["银鱼白","#cdd1d3"],["珍珠灰","#e4dfd7"],["莲子白","#e5d3aa"]],
+  "灰褐黑": [["晓灰","#d4c4b7"],["大理石灰","#c4cbcf"],["银灰","#918072"],["嫩灰","#74787a"],["燕羽灰","#685e48"],["鱼尾灰","#5e616d"],["瓦罐灰","#47484c"],["鹤灰","#4a4035"],["青灰","#2b333e"],["河豚灰","#393733"],["长石灰","#363433"],["岩石棕","#964d22"],["咖啡","#753117"],["淡栗棕","#673424"],["驼色","#66462a"],["茶褐","#5d3d21"],["古铜褐","#5c3719"],["栗棕","#5c1e19"],["乌梅紫","#1e131d"],["暗蓝紫","#131124"]]
+};
+const HEX_OF={};for(const g in LIB)for(const [n,h] of LIB[g])HEX_OF[n]=h;
+const PRESETS_RAW = [
+  {name:"故宫·朱墙", note:"宫墙、金瓦、青绿彩画", colors:[["朱红",40,"主色"],["汉白玉",25,"底色"],["藤黄",15,"辅色"],["靛青",12,"辅色"],["铜绿",8,"点缀"]]},
+  {name:"青花", note:"白地青花，一主一辅", colors:[["象牙白",60,"底色"],["靛青",22,"主色"],["云水蓝",10,"辅色"],["钢青",8,"勾线"]]},
+  {name:"宋瓷·天青", note:"雨过天青，素净少色", colors:[["远天蓝",45,"主色"],["月白",25,"底色"],["粉绿",15,"辅色"],["苍蓝",10,"勾线"],["土黄",5,"点缀"]]},
+  {name:"千里江山", note:"绢底石青石绿", colors:[["浅驼色",35,"底色"],["石绿",25,"主色"],["群青",20,"主色"],["苍绿",12,"辅色"],["赭石",8,"点缀"]]},
+  {name:"敦煌·土红", note:"壁画土红与石绿", colors:[["浅驼色",40,"底色"],["赭石",25,"主色"],["石绿",18,"辅色"],["群青",10,"辅色"],["栗棕",7,"勾线"]]},
+  {name:"景泰蓝", note:"蓝地、掐丝金、红点", colors:[["景泰蓝",40,"主色"],["孔雀蓝",18,"辅色"],["汉白玉",15,"辅色"],["琥珀黄",15,"勾线"],["珊瑚红",12,"点缀"]]},
+  {name:"宫灯·正红", note:"喜庆主红，金色压边", colors:[["高粱红",50,"主色"],["藤黄",20,"辅色"],["枣红",15,"辅色"],["汉白玉",10,"底色"],["乌梅紫",5,"勾线"]]},
+  {name:"水墨·朱印", note:"墨分五色，一点朱印", colors:[["汉白玉",55,"底色"],["珍珠灰",20,"辅色"],["鹤灰",15,"主色"],["乌梅紫",7,"勾线"],["朱红",3,"点缀"]]},
+  {name:"紫藤", note:"淡紫为地，芽绿提神", colors:[["淡青紫",40,"底色"],["藤萝紫",25,"主色"],["葛巾紫",15,"辅色"],["芽绿",12,"点缀"],["满天星紫",8,"勾线"]]},
+  {name:"荷塘", note:"月白水面，荷叶荷花", colors:[["月白",35,"底色"],["荷叶绿",30,"主色"],["牡丹粉红",18,"辅色"],["嘉陵水绿",12,"辅色"],["藤黄",5,"点缀"]]},
+  {name:"金秋", note:"米地杏黄，茶褐收边", colors:[["米色",40,"底色"],["杏黄",25,"主色"],["茶褐",15,"勾线"],["土黄",12,"辅色"],["枣红",8,"点缀"]]},
+  {name:"彩绘祥云", note:"参考彩绘祥云 · 散点比例", colors:[["芡食白",70,"底色",0],["朱红",5,"主色",1],["橘橙",4,"辅色",2],["海涛蓝",5,"主色",3],["海青",5,"辅色",4],["铜绿",3,"点缀",5],["莲子白",8,"勾线",6]]},
+  {name:"彩绘叠云", note:"参考彩绘祥云 · 满地比例", colors:[["芡食白",22,"底色",0],["朱红",13,"主色",1],["橘橙",10,"辅色",2],["海涛蓝",13,"主色",3],["海青",13,"辅色",4],["铜绿",9,"点缀",5],["莲子白",20,"勾线",6]]},
+  {name:"素地祥云", note:"白地为主，青云点金", colors:[["汉白玉",72,"底色"],["群青",13,"主色"],["远天蓝",8,"辅色"],["钢青",5,"勾线"],["藤黄",2,"点缀"]]},
+  {name:"孔雀", note:"深绿为主，蓝金相间", colors:[["孔雀绿",35,"主色"],["深海绿",25,"底色"],["孔雀蓝",18,"辅色"],["琥珀黄",14,"辅色"],["海棠红",8,"点缀"]]}
+];
+const PRESETS=PRESETS_RAW.map(p=>({name:p.name,note:p.note,locked:true,colors:p.colors.map(([n,r,role,fx])=>({name:n,hex:HEX_OF[n],ratio:r,role,fix:fx==null?undefined:{cloud:fx}}))}));
+const LIN=new Float32Array(256);for(let i=0;i<256;i++){const c=i/255;LIN[i]=c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4)}
+const fL=t=>t>0.008856?Math.cbrt(t):7.787*t+16/116;
+const hexRgb=h=>{h=h.replace("#","");return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]};
+const rgbHex=(r,g,b)=>"#"+[r,g,b].map(v=>Math.round(v).toString(16).padStart(2,"0")).join("");
+function rgbLab(r,g,b){const R=LIN[r],G=LIN[g],B=LIN[b];const x=fL((0.4124564*R+0.3575761*G+0.1804375*B)/0.95047),y=fL(0.2126729*R+0.7151522*G+0.0721750*B),z=fL((0.0193339*R+0.1191920*G+0.9503041*B)/1.08883);return [116*y-16,500*(x-y),200*(y-z)]}
+const FLAT=[];for(const g in LIB)for(const [n,h] of LIB[g])FLAT.push({name:n,hex:h,lab:rgbLab(...hexRgb(h))});
+function nearest(lab){let b=null,bd=1e9;for(const c of FLAT){const d=Math.hypot(lab[0]-c.lab[0],lab[1]-c.lab[1],lab[2]-c.lab[2]);if(d<bd){bd=d;b=c}}return {c:b,d:bd}}
+function nameOf(hex){hex=(hex||"").toLowerCase();for(const c of FLAT)if(c.hex===hex)return c.name;return ""}
+function apportion(w,total){const s=w.reduce((a,b)=>a+b,0)||1;const raw=w.map(v=>v/s*total);const fl=raw.map(Math.floor);let rem=total-fl.reduce((a,b)=>a+b,0);const ord=raw.map((v,i)=>[v-fl[i],i]).sort((a,b)=>b[0]-a[0]);for(let j=0;j<rem;j++)fl[ord[j%ord.length][1]]++;return fl}
+/* 图像取色：Lab 空间 k-means，按面积排序，可吸附到最近的传统色 */
+function extract(img,k,snap){const sc=Math.min(1,320/Math.max(img.naturalWidth,img.naturalHeight)),w=Math.max(1,Math.round(img.naturalWidth*sc)),h=Math.max(1,Math.round(img.naturalHeight*sc));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(img,0,0,w,h);const d=x.getImageData(0,0,w,h).data;
+  const pts=[];for(let i=0;i<w*h;i++)if(d[i*4+3]>=128)pts.push(rgbLab(d[i*4],d[i*4+1],d[i*4+2]));if(pts.length<k)return [];
+  let s=11;const rnd=()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+  const C=[pts[Math.floor(rnd()*pts.length)]];const D=new Float64Array(pts.length).fill(1e18);
+  while(C.length<k){let sum=0;const l=C[C.length-1];for(let i=0;i<pts.length;i++){const p=pts[i],dd=(p[0]-l[0])**2+(p[1]-l[1])**2+(p[2]-l[2])**2;if(dd<D[i])D[i]=dd;sum+=D[i]}let r=rnd()*sum,i=0;for(;i<pts.length-1;i++){r-=D[i];if(r<=0)break}C.push(pts[i].slice())}
+  let cnt;for(let it=0;it<14;it++){const acc=C.map(()=>[0,0,0,0]);for(const p of pts){let b=0,bd=1e18;C.forEach((q,j)=>{const dd=(p[0]-q[0])**2+(p[1]-q[1])**2+(p[2]-q[2])**2;if(dd<bd){bd=dd;b=j}});const a=acc[b];a[0]+=p[0];a[1]+=p[1];a[2]+=p[2];a[3]++}
+    acc.forEach((a,j)=>{if(a[3])C[j]=[a[0]/a[3],a[1]/a[3],a[2]/a[3]]});cnt=acc.map(a=>a[3])}
+  let items=C.map((q,j)=>{const nn=nearest(q);return {name:nn.c.name,hex:nn.c.hex,w:cnt[j],dE:nn.d}}).filter(i=>i.w>0);
+  if(snap){const m=new Map();for(const it of items){const e=m.get(it.hex);if(e)e.w+=it.w;else m.set(it.hex,{...it})}items=[...m.values()]}
+  items.sort((a,b)=>b.w-a.w);const r=apportion(items.map(i=>i.w),100);for(let i=0;i<r.length;i++)if(r[i]<1){const j=r.indexOf(Math.max(...r));r[j]--;r[i]=1}
+  return items.map((it,i)=>({name:it.name,hex:it.hex,ratio:r[i],dE:it.dE}))}
+return {LIB,HEX_OF,PRESETS,hexRgb,rgbHex,rgbLab,nearest,nameOf,apportion,extract,FLAT};
+})();
+</script>
+<script>
+/* =================== 纹样换色（第五种风格）===================
+   在 Shadow DOM 中运行，样式与元素 id 与生成器主体相互隔离；第一次切到该风格时才开始计算。 */
+(()=>{
+const pHost=document.getElementById("hsPanelHost"),sHost=document.getElementById("hsStageHost");
+const pr=pHost.attachShadow({mode:"open"}),sr=sHost.attachShadow({mode:"open"});
+pr.append(document.getElementById("hsPanelTpl").content.cloneNode(true));
+sr.append(document.getElementById("hsStageTpl").content.cloneNode(true));
+const HS_ROOTS=[pr,sr];
+
+/* ============ 传统色库（色值：中国色 / 《色谱》） ============ */
+const LIB = window.CNC.LIB, HEX_OF = window.CNC.HEX_OF;
+
+/* ============ 规范配色（比例合计 100） ============ */
+const PRESETS = window.CNC.PRESETS;
+
+/* ============ 颜色工具 ============ */
+const LIN = new Float32Array(256); for (let i=0;i<256;i++){const c=i/255;LIN[i]=c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4)}
+const fLab = t => t>0.008856?Math.cbrt(t):7.787*t+16/116;
+function hexRgb(h){h=h.replace("#","");return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]}
+function rgbHex(r,g,b){return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0")).join("")}
+function rgbLab(r,g,b){const R=LIN[r],G=LIN[g],B=LIN[b];
+  const x=fLab((0.4124564*R+0.3575761*G+0.1804375*B)/0.95047),y=fLab(0.2126729*R+0.7151522*G+0.0721750*B),z=fLab((0.0193339*R+0.1191920*G+0.9503041*B)/1.08883);
+  return [116*y-16,500*(x-y),200*(y-z)]}
+function labRgb(L,a,b){const fy=(L+16)/116,fx=fy+a/500,fz=fy-b/200;const inv=t=>{const t3=t*t*t;return t3>0.008856?t3:(t-16/116)/7.787};
+  const X=0.95047*inv(fx),Y=inv(fy),Z=1.08883*inv(fz);
+  const g=v=>{v=v<=0.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-0.055;return Math.max(0,Math.min(255,Math.round(v*255)))};
+  return [g(3.2404542*X-1.5371385*Y-0.4985314*Z),g(-0.9692660*X+1.8760108*Y+0.0415560*Z),g(0.0556434*X-0.2040259*Y+1.0572252*Z)]}
+const dE = (p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2]);
+const LIB_FLAT = []; for (const g in LIB) for (const [n,h] of LIB[g]) {const rgb=hexRgb(h);LIB_FLAT.push({name:n,hex:h,lab:rgbLab(...rgb)})}
+function nearestLib(lab){let best=null,bd=1e9;for(const c of LIB_FLAT){const d=dE(lab,c.lab);if(d<bd){bd=d;best=c}}return {c:best,d:bd}}
+function apportion(w,total){const s=w.reduce((a,b)=>a+b,0)||1;const raw=w.map(v=>v/s*total);const fl=raw.map(Math.floor);let rem=total-fl.reduce((a,b)=>a+b,0);
+  const ord=raw.map((v,i)=>[v-fl[i],i]).sort((a,b)=>b[0]-a[0]);for(let j=0;j<rem;j++)fl[ord[j%ord.length][1]]++;return fl}
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const TAU=Math.PI*2;
+/* ===== 纹样构件库：每个纹样由若干「构件层」组成，按层着色 ===== */
+
+/* 内卷勾卷线：从外缘向中心旋入 */
+function spiral(p, cx, cy, r, turns, dir, a0){
+  const n = Math.ceil(48*turns);
+  for (let i=0;i<=n;i++){const t=i/n, a=a0+dir*t*turns*TAU, rr=r*(1-0.82*t);
+    const x=cx+rr*Math.cos(a), y=cy+rr*Math.sin(a); i?p.lineTo(x,y):p.moveTo(x,y)}
+}
+function circle(p,x,y,r){p.moveTo(x+r,y);p.arc(x,y,r,0,TAU)}
+
+/* 如意云头瓣（云曲瓣）：沿 +x 方向，r0→r1，半宽 w。两侧圆瓣内收，中间出尖 */
+function ruyi(p, r0, r1, w){
+  const L=r1-r0, X=t=>r0+t*L;
+  p.moveTo(X(0),0);
+  p.bezierCurveTo(X(.1),.5*w, X(.28),.92*w, X(.5),w);
+  p.bezierCurveTo(X(.76),1.06*w, X(.96),.86*w, X(.94),.52*w);
+  p.bezierCurveTo(X(.92),.3*w, X(.85),.22*w, X(.87),.13*w);
+  p.bezierCurveTo(X(.9),.06*w, X(.96),.07*w, X(.97),0);
+  p.bezierCurveTo(X(.96),-.07*w, X(.9),-.06*w, X(.87),-.13*w);
+  p.bezierCurveTo(X(.85),-.22*w, X(.92),-.3*w, X(.94),-.52*w);
+  p.bezierCurveTo(X(.96),-.86*w, X(.76),-1.06*w, X(.5),-w);
+  p.bezierCurveTo(X(.28),-.92*w, X(.1),-.5*w, X(0),0);
+  p.closePath();
+}
+function ruyiCurls(p, r0, r1, w){ // 两侧圆瓣内的勾卷
+  const L=r1-r0, cx=r0+.72*L;
+  spiral(p, cx, .56*w, .36*w, 1.3, 1, Math.PI*.1);
+  spiral(p, cx, -.56*w, .36*w, 1.3, -1, -Math.PI*.1);
+}
+/* 侧卷瓣：桃形瓣身 + 两侧外卷 */
+function rollBody(p, r0, r1, w){
+  const L=r1-r0, X=t=>r0+t*L;
+  p.moveTo(X(0),0);
+  p.bezierCurveTo(X(.22),.62*w, X(.55),1.0*w, X(.76),.58*w);
+  p.bezierCurveTo(X(.88),.32*w, X(.96),.12*w, X(1),0);
+  p.bezierCurveTo(X(.96),-.12*w, X(.88),-.32*w, X(.76),-.58*w);
+  p.bezierCurveTo(X(.55),-1.0*w, X(.22),-.62*w, X(0),0);
+  p.closePath();
+}
+function rollDiscs(p, r0, r1, w){const L=r1-r0;circle(p,r0+.42*L,.86*w,.34*w);circle(p,r0+.42*L,-.86*w,.34*w)}
+function rollCurls(p, r0, r1, w){const L=r1-r0;spiral(p,r0+.42*L,.86*w,.27*w,1.1,-1,Math.PI*.5);spiral(p,r0+.42*L,-.86*w,.27*w,1.1,1,-Math.PI*.5)}
+/* 以中心点缩放后绘制（用于退晕的内晕层） */
+function scaled(p, cx, cy, s, fn){p.save();p.translate(cx,cy);p.scale(s,s);p.translate(-cx,-cy);fn();p.restore()}
+function radial(p, cx, cy, n, a0, fn){for(let k=0;k<n;k++){p.save();p.translate(cx,cy);p.rotate(a0+k*TAU/n);fn();p.restore()}}
+
+const MOTIFS = {};
+
+/* ---------- 宝相花：唐代团窠式，八出，三层瓣，花心联珠，角隅小团花，四方连续 ---------- */
+MOTIFS.baoxiang = {
+  name:"宝相花", tiled:true, dens:2,
+  spec:"唐代团窠式宝相花：以「米」字为基准放射对称，八出。由外向内为如意云曲瓣、侧卷瓣、对勾小瓣三层，正侧相错叠压；花心与瓣间缀联珠；瓣内退晕；四角为小团花，四方连续散点排列。",
+  layers:[
+    {name:"地色", pref:["底色","主色"]},
+    {name:"云曲瓣外晕 · 对勾瓣", pref:["主色","辅色","底色"]},
+    {name:"外瓣内晕 · 侧卷瓣外晕", pref:["辅色","主色","底色"]},
+    {name:"侧卷瓣内晕 · 角隅团花", pref:["辅色","点缀","主色"]},
+    {name:"勾线 · 勾卷", pref:["勾线"]},
+    {name:"花心 · 联珠", pref:["点缀","辅色"]}
+  ],
+  params:{R:[.32,.5,.44], LW:[.003,.02,.0065], B:[.006,.05,.016], C:[.08,.3,.2]},
+  ops(P){
+    const R=P.R, lw=P.LW, cx=.5, cy=.5, a1=0, a2=Math.PI/8;
+    const C=Math.min(P.C, (.7-R)*.92);
+    const oR0=.36*R, oR1=R, oW=.3*R;         // 外层云曲瓣
+    const mR0=.25*R, mR1=.8*R, mW=.2*R;      // 中层侧卷瓣
+    const iR0=.15*R, iR1=.42*R, iW=.12*R;    // 内层对勾瓣
+    const corners=[[0,0],[1,0],[0,1],[1,1]];
+    const outer = p=>radial(p,cx,cy,8,a1,()=>ruyi(p,oR0,oR1,oW));
+    const middle = p=>radial(p,cx,cy,8,a2,()=>{rollBody(p,mR0,mR1,mW);rollDiscs(p,mR0,mR1,mW)});
+    const inner = p=>radial(p,cx,cy,8,a1,()=>ruyi(p,iR0,iR1,iW));
+    const cornerPetals = p=>corners.forEach(([x,y])=>{for(let k=0;k<8;k++){const a=a2+k*TAU/8;circle(p,x+.66*C*Math.cos(a),y+.66*C*Math.sin(a),.34*C)}});
+    const pearls=(r,rad,n,a0)=>p=>{for(let k=0;k<n;k++){const a=a0+k*TAU/n;circle(p,cx+r*Math.cos(a),cy+r*Math.sin(a),rad)}};
+    return [
+      {layer:4, stroke:2*lw, build:outer},
+      {layer:2, fill:true, build:outer},
+      {layer:1, band:P.B*1.6, build:outer},
+      {layer:4, stroke:.8*lw, build:p=>radial(p,cx,cy,8,a1,()=>ruyiCurls(p,oR0,oR1,oW))},
+      {layer:4, stroke:2*lw, build:middle},
+      {layer:3, fill:true, build:middle},
+      {layer:2, band:P.B, build:middle},
+      {layer:4, stroke:.8*lw, build:p=>radial(p,cx,cy,8,a2,()=>rollCurls(p,mR0,mR1,mW))},
+      {layer:4, stroke:2*lw, build:inner},
+      {layer:1, fill:true, build:inner},
+      {layer:4, stroke:2*lw, build:p=>circle(p,cx,cy,.17*R)},
+      {layer:5, fill:true, build:p=>circle(p,cx,cy,.17*R)},
+      {layer:4, stroke:1.2*lw, build:pearls(.105*R,.022*R,12,0)},
+      {layer:4, stroke:2*lw, build:pearls(.93*R,.036*R,8,a2)},
+      {layer:5, fill:true, build:pearls(.93*R,.036*R,8,a2)},
+      {layer:4, stroke:2*lw, build:cornerPetals},
+      {layer:3, fill:true, build:cornerPetals},
+      {layer:4, stroke:.8*lw, build:p=>corners.forEach(([x,y])=>{for(let k=0;k<8;k++){const a=a2+k*TAU/8;spiral(p,x+.7*C*Math.cos(a),y+.7*C*Math.sin(a),.2*C,1,1,a+Math.PI)}})},
+      {layer:4, stroke:2*lw, build:p=>corners.forEach(([x,y])=>circle(p,x,y,.26*C))},
+      {layer:5, fill:true, build:p=>corners.forEach(([x,y])=>circle(p,x,y,.26*C))}
+    ];
+  }
+};
+
+/* ---------- 祥云：宋元以后如意云头朵云，云头三卷、云尾收梢，正反交错散点 ---------- */
+function cloudHead(p){circle(p,-.17,.02,.2);circle(p,.17,.02,.2);circle(p,0,-.13,.115);
+  p.moveTo(-.33,.12);p.bezierCurveTo(-.24,.25,-.08,.26,0,.38);p.bezierCurveTo(.08,.26,.24,.25,.33,.12);p.closePath()}
+function tailPts(){const P0=[.16,.2],P1=[.46,.36],P2=[.66,-.14],P3=[.98,.02];const out=[];
+  for(let i=0;i<=40;i++){const t=i/40,u=1-t;out.push([u*u*u*P0[0]+3*u*u*t*P1[0]+3*u*t*t*P2[0]+t*t*t*P3[0],u*u*u*P0[1]+3*u*u*t*P1[1]+3*u*t*t*P2[1]+t*t*t*P3[1],t])}return out}
+function cloudTail(p,g){const pts=tailPts();const L=[],R=[];
+  for(let i=0;i<pts.length;i++){const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];let tx=b[0]-a[0],ty=b[1]-a[1];const l=Math.hypot(tx,ty)||1;tx/=l;ty/=l;
+    const w=(.1*(1-pts[i][2])**1.2+.016)*g;L.push([pts[i][0]-ty*w,pts[i][1]+tx*w]);R.push([pts[i][0]+ty*w,pts[i][1]-tx*w])}
+  p.moveTo(L[0][0],L[0][1]);for(const q of L)p.lineTo(q[0],q[1]);for(let i=R.length-1;i>=0;i--)p.lineTo(R[i][0],R[i][1]);p.closePath()}
+function cloudTailLine(p){const pts=tailPts();p.moveTo(pts[3][0],pts[3][1]);for(let i=4;i<pts.length-2;i++)p.lineTo(pts[i][0],pts[i][1])}
+function cloudCurls(p){spiral(p,-.17,.02,.18,1.6,1,-Math.PI*.55);spiral(p,.17,.02,.18,1.6,-1,-Math.PI*.45);spiral(p,0,-.13,.09,1.1,1,Math.PI*.9);spiral(p,.98,-.03,.05,1.2,-1,Math.PI*.6)}
+function cloudLobes(p,s){circle(p,-.17,.02,.2*s);circle(p,.17,.02,.2*s);circle(p,0,-.14,.13*s)}
+/* ===== 祥云单元：依参考彩绘祥云逐色块拟合的三次贝塞尔路径 =====
+   左橙卷、右蓝卷两组勾卷，各分深晕、浅晕两道卷带；蓝色大卷带自左上翻过云顶、沿右侧旋入右卷心；
+   中部青绿浪卷升起并拖出双股云尾；色带之间留亮线，通体勾边。坐标为单元坐标（宽 1.6，中心为原点）。 */
+const CLOUD_SVG={"sil": "M-0.3083 0.5462C-0.3189 0.5451 -0.3379 0.5425 -0.3505 0.5404C-0.3631 0.5383 -0.3833 0.5357 -0.3954 0.5345C-0.4127 0.5328 -0.4201 0.5314 -0.4301 0.5277C-0.4372 0.5252 -0.4564 0.5185 -0.4730 0.5130C-0.4921 0.5065 -0.5084 0.5000 -0.5174 0.4951C-0.5347 0.4858 -0.5407 0.4827 -0.5597 0.4736C-0.5892 0.4594 -0.6207 0.4369 -0.6453 0.4123C-0.6575 0.4002 -0.6724 0.3867 -0.6786 0.3824C-0.6914 0.3733 -0.6998 0.3649 -0.7072 0.3538C-0.7129 0.3451 -0.7631 0.2959 -0.7773 0.2850C-0.8001 0.2676 -0.8056 0.2533 -0.7942 0.2412C-0.7845 0.2308 -0.7732 0.2319 -0.7468 0.2458C-0.6851 0.2782 -0.6867 0.2770 -0.6892 0.2903C-0.6927 0.3087 -0.6804 0.3225 -0.6644 0.3180C-0.6530 0.3149 -0.6516 0.3155 -0.6361 0.3301C-0.6261 0.3396 -0.6179 0.3458 -0.6094 0.3504C-0.6027 0.3540 -0.5913 0.3621 -0.5840 0.3683C-0.5635 0.3862 -0.5593 0.3882 -0.5309 0.3941C-0.5215 0.3960 -0.5029 0.4003 -0.4895 0.4036C-0.4127 0.4223 -0.3041 0.4253 -0.2585 0.4100C-0.2442 0.4052 -0.2427 0.4028 -0.2513 0.3980C-0.2664 0.3895 -0.2688 0.3726 -0.2569 0.3585C-0.2547 0.3560 -0.2467 0.3494 -0.2390 0.3440C-0.2278 0.3360 -0.2217 0.3301 -0.2092 0.3152C-0.1913 0.2938 -0.1877 0.2877 -0.1834 0.2706C-0.1801 0.2578 -0.1762 0.2493 -0.1687 0.2381C-0.1626 0.2292 -0.1626 0.2223 -0.1685 0.2159C-0.1742 0.2098 -0.1770 0.2106 -0.1823 0.2196C-0.1967 0.2444 -0.2225 0.2527 -0.2502 0.2413C-0.2650 0.2352 -0.2698 0.2353 -0.2853 0.2425C-0.3022 0.2503 -0.3180 0.2538 -0.3482 0.2565C-0.3621 0.2577 -0.3812 0.2595 -0.3907 0.2605C-0.4080 0.2623 -0.4080 0.2623 -0.4262 0.2572C-0.4438 0.2523 -0.4450 0.2521 -0.4677 0.2525C-0.5089 0.2532 -0.5247 0.2464 -0.5346 0.2240C-0.5387 0.2148 -0.5398 0.2139 -0.5508 0.2108C-0.5781 0.2030 -0.6125 0.1700 -0.6416 0.1236C-0.6580 0.0974 -0.6612 0.0802 -0.6538 0.0586C-0.6499 0.0473 -0.6501 0.0455 -0.6566 0.0274C-0.6611 0.0148 -0.6602 0.0042 -0.6532 -0.0112C-0.6477 -0.0233 -0.6472 -0.0259 -0.6432 -0.0608C-0.6412 -0.0780 -0.6421 -0.0834 -0.6484 -0.0932C-0.6686 -0.1247 -0.6629 -0.1463 -0.6299 -0.1633C-0.6118 -0.1727 -0.6110 -0.1740 -0.6142 -0.1912C-0.6184 -0.2143 -0.6118 -0.2278 -0.5921 -0.2365C-0.5883 -0.2382 -0.5810 -0.2435 -0.5759 -0.2482C-0.5647 -0.2587 -0.5590 -0.2605 -0.5374 -0.2599C-0.5225 -0.2595 -0.5225 -0.2595 -0.5088 -0.2688C-0.4801 -0.2882 -0.4343 -0.2914 -0.4109 -0.2757C-0.3988 -0.2675 -0.3985 -0.2678 -0.3926 -0.2904C-0.3875 -0.3102 -0.3812 -0.3234 -0.3716 -0.3349C-0.3675 -0.3398 -0.3617 -0.3478 -0.3586 -0.3527C-0.3519 -0.3635 -0.3423 -0.3736 -0.3305 -0.3827C-0.3256 -0.3864 -0.3186 -0.3922 -0.3150 -0.3956C-0.3052 -0.4045 -0.2966 -0.4090 -0.2824 -0.4126C-0.2755 -0.4143 -0.2655 -0.4173 -0.2603 -0.4191C-0.2461 -0.4242 -0.2302 -0.4271 -0.2066 -0.4290C-0.1793 -0.4311 -0.1783 -0.4317 -0.1653 -0.4501C-0.1457 -0.4779 -0.1302 -0.4919 -0.1101 -0.4998C-0.1038 -0.5023 -0.0959 -0.5064 -0.0926 -0.5088C-0.0740 -0.5223 -0.0657 -0.5269 -0.0481 -0.5336C-0.0189 -0.5447 -0.0123 -0.5457 0.0406 -0.5467C0.0940 -0.5477 0.1015 -0.5470 0.1397 -0.5374C0.1960 -0.5232 0.2164 -0.5128 0.2303 -0.4912C0.2342 -0.4851 0.2370 -0.4826 0.2423 -0.4803C0.2574 -0.4738 0.2617 -0.4712 0.2799 -0.4575C0.3017 -0.4410 0.3139 -0.4286 0.3221 -0.4145C0.3536 -0.3600 0.3563 -0.3542 0.3593 -0.3329C0.3615 -0.3173 0.3639 -0.3167 0.3970 -0.3227C0.4269 -0.3280 0.4464 -0.3273 0.4762 -0.3198C0.5155 -0.3098 0.5157 -0.3097 0.5649 -0.2625C0.5743 -0.2536 0.5877 -0.2411 0.5947 -0.2348C0.6180 -0.2139 0.6245 -0.1999 0.6276 -0.1641C0.6304 -0.1322 0.6332 -0.1281 0.6602 -0.1160C0.6683 -0.1124 0.6829 -0.1042 0.6927 -0.0978C0.7025 -0.0914 0.7152 -0.0835 0.7209 -0.0802C0.7323 -0.0736 0.7421 -0.0637 0.7579 -0.0431C0.7721 -0.0244 0.7754 -0.0181 0.7847 0.0078C0.8016 0.0552 0.8058 0.0870 0.7973 0.1022C0.7912 0.1129 0.7912 0.1196 0.7972 0.1309C0.8015 0.1390 0.8017 0.1398 0.8002 0.1484C0.7993 0.1534 0.7979 0.1661 0.7970 0.1767C0.7948 0.2025 0.7949 0.2020 0.7878 0.2065C0.7766 0.2134 0.7734 0.2217 0.7786 0.2307C0.7827 0.2379 0.7814 0.2406 0.7678 0.2548C0.7522 0.2711 0.7500 0.2746 0.7440 0.2929C0.7412 0.3014 0.7363 0.3118 0.7318 0.3188C0.7277 0.3252 0.7224 0.3344 0.7199 0.3392C0.7140 0.3509 0.7029 0.3623 0.6876 0.3727C0.6807 0.3774 0.6707 0.3849 0.6654 0.3895C0.6347 0.4158 0.5830 0.4331 0.5486 0.4286C0.5409 0.4275 0.5219 0.4267 0.5065 0.4266C0.4784 0.4265 0.4784 0.4265 0.4614 0.4207C0.4380 0.4128 0.4305 0.4128 0.4098 0.4213C0.3615 0.4409 0.3214 0.4427 0.2851 0.4268C0.2767 0.4232 0.2640 0.4189 0.2569 0.4172C0.2390 0.4129 0.2337 0.4098 0.2167 0.3935C0.2085 0.3857 0.1940 0.3733 0.1844 0.3660C0.1748 0.3587 0.1653 0.3514 0.1633 0.3498C0.1584 0.3459 0.1564 0.3482 0.1532 0.3613C0.1475 0.3847 0.1387 0.3968 0.1118 0.4182C0.1022 0.4259 0.0892 0.4366 0.0830 0.4421C0.0557 0.4661 0.0419 0.4749 0.0162 0.4849C0.0077 0.4882 -0.0060 0.4950 -0.0141 0.5000C-0.0222 0.5050 -0.0317 0.5103 -0.0351 0.5118C-0.0461 0.5165 -0.1094 0.5321 -0.1302 0.5351C-0.1413 0.5368 -0.1562 0.5399 -0.1635 0.5421C-0.1840 0.5482 -0.2678 0.5506 -0.3083 0.5462Z", "orD": "M-0.2421 0.3835C-0.2530 0.3812 -0.2485 0.3718 -0.2304 0.3589C-0.2228 0.3536 -0.2142 0.3466 -0.2113 0.3435C-0.2021 0.3339 -0.1803 0.3073 -0.1740 0.2980C-0.1707 0.2931 -0.1640 0.2838 -0.1592 0.2773C-0.1544 0.2708 -0.1469 0.2581 -0.1427 0.2492C-0.1374 0.2380 -0.1323 0.2299 -0.1264 0.2233C-0.1218 0.2180 -0.1163 0.2101 -0.1142 0.2057C-0.1122 0.2014 -0.1080 0.1955 -0.1049 0.1927C-0.1012 0.1893 -0.0977 0.1839 -0.0946 0.1764C-0.0920 0.1703 -0.0874 0.1615 -0.0843 0.1569C-0.0783 0.1482 -0.0656 0.1213 -0.0580 0.1013C-0.0514 0.0841 -0.0485 0.0676 -0.0492 0.0530C-0.0532 -0.0230 -0.0566 -0.0451 -0.0666 -0.0599C-0.0718 -0.0677 -0.0713 -0.0785 -0.0656 -0.0812C-0.0381 -0.0937 0.0038 -0.0379 0.0102 0.0197C0.0159 0.0702 0.0056 0.1338 -0.0155 0.1797C-0.0185 0.1862 -0.0246 0.1998 -0.0290 0.2099C-0.0448 0.2462 -0.0501 0.2534 -0.0972 0.3011C-0.1390 0.3435 -0.1495 0.3510 -0.1836 0.3630C-0.1874 0.3643 -0.1948 0.3682 -0.1999 0.3715C-0.2147 0.3811 -0.2312 0.3858 -0.2421 0.3835ZM-0.3845 0.2035C-0.3979 0.2000 -0.4135 0.1955 -0.4192 0.1934C-0.4249 0.1913 -0.4368 0.1882 -0.4457 0.1864C-0.4697 0.1816 -0.4743 0.1788 -0.4927 0.1564C-0.5079 0.1380 -0.5335 0.1145 -0.5434 0.1100C-0.5475 0.1081 -0.5564 0.1059 -0.5632 0.1051C-0.5864 0.1022 -0.5901 0.0977 -0.5819 0.0817C-0.5741 0.0667 -0.5737 0.0512 -0.5804 0.0311C-0.5855 0.0159 -0.5859 0.0023 -0.5818 -0.0118C-0.5795 -0.0198 -0.5790 -0.0268 -0.5789 -0.0518C-0.5788 -0.0785 -0.5784 -0.0834 -0.5755 -0.0932C-0.5737 -0.0993 -0.5702 -0.1127 -0.5678 -0.1231C-0.5625 -0.1460 -0.5601 -0.1509 -0.5478 -0.1643C-0.5426 -0.1700 -0.5343 -0.1805 -0.5294 -0.1876C-0.5170 -0.2057 -0.5007 -0.2162 -0.4593 -0.2328C-0.4311 -0.2441 -0.4246 -0.2439 -0.4121 -0.2310C-0.4056 -0.2242 -0.4038 -0.2183 -0.4037 -0.2029C-0.4037 -0.1886 -0.4053 -0.1857 -0.4238 -0.1675C-0.4523 -0.1393 -0.4670 -0.1163 -0.4772 -0.0835C-0.4821 -0.0676 -0.4830 -0.0236 -0.4787 -0.0037C-0.4661 0.0548 -0.4229 0.0932 -0.3527 0.1081C-0.3125 0.1167 -0.2717 0.1024 -0.2431 0.0699C-0.2184 0.0418 -0.2127 0.0309 -0.2125 0.0118C-0.2123 -0.0210 -0.2295 -0.0410 -0.2643 -0.0486C-0.2792 -0.0519 -0.2869 -0.0552 -0.2869 -0.0583C-0.2869 -0.0627 -0.2772 -0.0705 -0.2669 -0.0744C-0.2612 -0.0766 -0.2521 -0.0810 -0.2466 -0.0841C-0.2279 -0.0951 -0.2221 -0.0952 -0.2024 -0.0849C-0.1895 -0.0780 -0.1853 -0.0734 -0.1744 -0.0532C-0.1628 -0.0319 -0.1599 -0.0280 -0.1500 -0.0205C-0.1339 -0.0084 -0.1285 0.0144 -0.1351 0.0414C-0.1373 0.0499 -0.1390 0.0593 -0.1390 0.0622C-0.1390 0.0707 -0.1430 0.0837 -0.1492 0.0951C-0.1524 0.1009 -0.1572 0.1109 -0.1598 0.1172C-0.1708 0.1438 -0.1968 0.1659 -0.2480 0.1923C-0.2661 0.2017 -0.2661 0.2017 -0.2850 0.2028C-0.2954 0.2034 -0.3112 0.2053 -0.3201 0.2070C-0.3445 0.2115 -0.3557 0.2109 -0.3845 0.2035ZM0.4473 0.2034C0.4419 0.1980 0.4427 0.1957 0.4532 0.1861C0.4782 0.1631 0.4856 0.1165 0.4713 0.0726C0.4614 0.0425 0.4268 0.0095 0.3804 -0.0139C0.3510 -0.0287 0.2862 -0.0264 0.2524 -0.0094C0.2486 -0.0074 0.2373 -0.0009 0.2274 0.0052C0.2078 0.0172 0.2022 0.0191 0.1958 0.0160C0.1880 0.0123 0.1863 0.0069 0.1857 -0.0157C0.1842 -0.0719 0.1701 -0.1064 0.1310 -0.1493C0.1107 -0.1716 0.1083 -0.1735 0.0924 -0.1815C0.0279 -0.2139 -0.0444 -0.2030 -0.0957 -0.1532C-0.1211 -0.1286 -0.1246 -0.1279 -0.1369 -0.1448C-0.1521 -0.1656 -0.1518 -0.1686 -0.1330 -0.1886C-0.1205 -0.2020 -0.1190 -0.2043 -0.1061 -0.2304C-0.0890 -0.2649 -0.0901 -0.2640 -0.0522 -0.2766C-0.0189 -0.2877 -0.0090 -0.2890 0.0071 -0.2841C0.0213 -0.2798 0.0275 -0.2801 0.0375 -0.2854C0.0516 -0.2930 0.0595 -0.2917 0.0729 -0.2799C0.0811 -0.2726 0.0849 -0.2716 0.0956 -0.2736C0.1088 -0.2761 0.1126 -0.2747 0.1247 -0.2633C0.1307 -0.2576 0.1395 -0.2512 0.1449 -0.2484C0.1567 -0.2425 0.1690 -0.2308 0.1880 -0.2074C0.2070 -0.1839 0.2119 -0.1756 0.2180 -0.1567C0.2207 -0.1482 0.2249 -0.1362 0.2274 -0.1301C0.2298 -0.1240 0.2329 -0.1142 0.2343 -0.1083C0.2395 -0.0869 0.2455 -0.0826 0.2632 -0.0872C0.2704 -0.0890 0.2797 -0.0902 0.2872 -0.0902C0.3089 -0.0903 0.3173 -0.0922 0.3282 -0.0996C0.3481 -0.1133 0.3643 -0.1129 0.3899 -0.0981C0.3955 -0.0949 0.4065 -0.0898 0.4144 -0.0867C0.4392 -0.0771 0.4507 -0.0663 0.4628 -0.0414C0.4693 -0.0278 0.4698 -0.0239 0.4670 -0.0075C0.4641 0.0095 0.4692 0.0164 0.4832 0.0142C0.5008 0.0115 0.5053 0.0115 0.5106 0.0140C0.5298 0.0231 0.5402 0.0576 0.5340 0.0911C0.5288 0.1187 0.5282 0.1208 0.5199 0.1389C0.5156 0.1483 0.5106 0.1598 0.5088 0.1645C0.5019 0.1817 0.4940 0.1898 0.4728 0.2010C0.4591 0.2081 0.4526 0.2088 0.4473 0.2034Z", "orL": "M-0.1709 0.2906C-0.1703 0.2889 -0.1685 0.2823 -0.1669 0.2759C-0.1635 0.2625 -0.1623 0.2599 -0.1522 0.2445C-0.1404 0.2263 -0.1418 0.2189 -0.1613 0.1984C-0.1791 0.1798 -0.1911 0.1811 -0.1951 0.2023C-0.1998 0.2270 -0.2192 0.2352 -0.2466 0.2238C-0.2649 0.2162 -0.2704 0.2164 -0.2891 0.2251C-0.3069 0.2335 -0.3171 0.2359 -0.3423 0.2381C-0.3529 0.2389 -0.3705 0.2407 -0.3815 0.2420C-0.4047 0.2447 -0.4119 0.2442 -0.4281 0.2387C-0.4393 0.2349 -0.4415 0.2347 -0.4695 0.2345C-0.5089 0.2343 -0.5152 0.2315 -0.5204 0.2120C-0.5225 0.2040 -0.5278 0.1989 -0.5364 0.1967C-0.5589 0.1909 -0.5651 0.1874 -0.5828 0.1705C-0.5967 0.1572 -0.6091 0.1418 -0.6234 0.1199C-0.6411 0.0929 -0.6435 0.0822 -0.6366 0.0624C-0.6318 0.0486 -0.6319 0.0435 -0.6375 0.0298C-0.6438 0.0144 -0.6437 0.0092 -0.6369 -0.0048C-0.6306 -0.0180 -0.6293 -0.0234 -0.6267 -0.0481C-0.6236 -0.0770 -0.6241 -0.0852 -0.6299 -0.0955C-0.6493 -0.1299 -0.6482 -0.1352 -0.6196 -0.1493C-0.5952 -0.1614 -0.5910 -0.1696 -0.5968 -0.1930C-0.6009 -0.2092 -0.5963 -0.2186 -0.5831 -0.2210C-0.5787 -0.2218 -0.5754 -0.2243 -0.5676 -0.2325C-0.5578 -0.2429 -0.5578 -0.2429 -0.5407 -0.2419C-0.5207 -0.2407 -0.5181 -0.2414 -0.4987 -0.2547C-0.4852 -0.2640 -0.4792 -0.2657 -0.4564 -0.2671C-0.4226 -0.2692 -0.4052 -0.2575 -0.4052 -0.2326C-0.4052 -0.2234 -0.4052 -0.2234 -0.4114 -0.2301C-0.4242 -0.2440 -0.4306 -0.2443 -0.4593 -0.2328C-0.5007 -0.2162 -0.5170 -0.2057 -0.5294 -0.1876C-0.5343 -0.1805 -0.5426 -0.1700 -0.5478 -0.1643C-0.5601 -0.1509 -0.5625 -0.1460 -0.5678 -0.1231C-0.5702 -0.1127 -0.5737 -0.0993 -0.5755 -0.0932C-0.5784 -0.0834 -0.5788 -0.0785 -0.5789 -0.0518C-0.5790 -0.0268 -0.5795 -0.0198 -0.5818 -0.0118C-0.5859 0.0023 -0.5855 0.0159 -0.5804 0.0311C-0.5737 0.0512 -0.5741 0.0667 -0.5819 0.0817C-0.5901 0.0977 -0.5864 0.1022 -0.5632 0.1051C-0.5564 0.1059 -0.5475 0.1081 -0.5434 0.1100C-0.5335 0.1145 -0.5079 0.1380 -0.4927 0.1564C-0.4743 0.1788 -0.4697 0.1816 -0.4457 0.1864C-0.4368 0.1882 -0.4243 0.1915 -0.4177 0.1939C-0.3771 0.2084 -0.3485 0.2123 -0.3201 0.2070C-0.3112 0.2053 -0.2954 0.2034 -0.2850 0.2028C-0.2661 0.2017 -0.2661 0.2017 -0.2480 0.1923C-0.1968 0.1659 -0.1708 0.1438 -0.1598 0.1172C-0.1572 0.1109 -0.1524 0.1009 -0.1492 0.0951C-0.1430 0.0837 -0.1390 0.0707 -0.1390 0.0622C-0.1390 0.0593 -0.1373 0.0499 -0.1351 0.0414C-0.1285 0.0144 -0.1339 -0.0084 -0.1500 -0.0205C-0.1599 -0.0280 -0.1628 -0.0319 -0.1744 -0.0532C-0.1858 -0.0742 -0.1898 -0.0785 -0.2052 -0.0861C-0.2206 -0.0938 -0.2281 -0.0943 -0.2388 -0.0883C-0.2459 -0.0844 -0.2613 -0.0769 -0.2746 -0.0709C-0.2781 -0.0694 -0.2823 -0.0659 -0.2841 -0.0632C-0.2861 -0.0601 -0.2905 -0.0568 -0.2959 -0.0543C-0.3026 -0.0511 -0.3061 -0.0481 -0.3122 -0.0402C-0.3251 -0.0235 -0.3327 -0.0201 -0.3412 -0.0273C-0.3565 -0.0401 -0.3479 -0.0807 -0.3276 -0.0913C-0.3246 -0.0928 -0.3136 -0.0943 -0.2936 -0.0959C-0.2636 -0.0982 -0.2545 -0.0984 -0.2292 -0.0974C-0.2131 -0.0968 -0.2068 -0.0991 -0.1985 -0.1086C-0.1918 -0.1162 -0.1913 -0.1216 -0.1958 -0.1370C-0.2018 -0.1576 -0.2007 -0.1625 -0.1880 -0.1723C-0.1761 -0.1813 -0.1754 -0.1853 -0.1825 -0.2018C-0.1869 -0.2123 -0.1876 -0.2282 -0.1841 -0.2444C-0.1763 -0.2814 -0.1408 -0.3064 -0.0966 -0.3059C-0.0827 -0.3058 -0.0765 -0.3064 -0.0665 -0.3091C-0.0570 -0.3117 -0.0496 -0.3125 -0.0360 -0.3126C-0.0151 -0.3128 -0.0140 -0.3133 -0.0029 -0.3277C0.0063 -0.3397 0.0116 -0.3420 0.0310 -0.3427C0.0529 -0.3436 0.0722 -0.3403 0.0944 -0.3321C0.1237 -0.3212 0.1281 -0.3181 0.1372 -0.3017C0.1493 -0.2798 0.1583 -0.2700 0.1808 -0.2541C0.1891 -0.2483 0.2013 -0.2390 0.2078 -0.2335C0.2143 -0.2280 0.2250 -0.2204 0.2315 -0.2166C0.2554 -0.2025 0.2579 -0.1957 0.2448 -0.1803C0.2371 -0.1713 0.2355 -0.1661 0.2387 -0.1600C0.2425 -0.1527 0.2496 -0.1505 0.2736 -0.1492C0.2854 -0.1486 0.3020 -0.1474 0.3105 -0.1465C0.3224 -0.1453 0.3298 -0.1453 0.3416 -0.1467C0.3830 -0.1517 0.3963 -0.1489 0.4144 -0.1311C0.4268 -0.1190 0.4292 -0.1177 0.4466 -0.1145C0.4672 -0.1108 0.4726 -0.1052 0.4710 -0.0898C0.4693 -0.0739 0.4696 -0.0706 0.4738 -0.0623C0.4786 -0.0530 0.4786 -0.0495 0.4739 -0.0384C0.4676 -0.0235 0.4694 -0.0175 0.4835 -0.0067C0.4995 0.0056 0.5023 0.0063 0.5300 0.0051C0.5683 0.0034 0.5735 0.0071 0.5767 0.0379C0.5786 0.0558 0.5804 0.0599 0.5920 0.0723C0.6047 0.0857 0.6056 0.0892 0.6036 0.1149C0.6013 0.1447 0.5976 0.1506 0.5801 0.1530C0.5692 0.1545 0.5641 0.1585 0.5538 0.1738C0.5489 0.1812 0.5414 0.1914 0.5370 0.1966C0.5285 0.2068 0.5269 0.2099 0.5248 0.2211C0.5217 0.2379 0.5173 0.2417 0.4981 0.2441C0.4913 0.2449 0.4758 0.2473 0.4636 0.2493C0.4358 0.2540 0.4096 0.2554 0.3952 0.2529C0.3721 0.2490 0.3650 0.2355 0.3790 0.2222C0.3916 0.2102 0.4436 0.1903 0.4436 0.1975C0.4436 0.2017 0.4505 0.2070 0.4561 0.2070C0.4615 0.2070 0.4797 0.1983 0.4901 0.1907C0.4974 0.1853 0.5045 0.1753 0.5088 0.1645C0.5106 0.1598 0.5156 0.1483 0.5199 0.1389C0.5282 0.1208 0.5288 0.1187 0.5340 0.0911C0.5402 0.0576 0.5298 0.0231 0.5106 0.0140C0.5053 0.0115 0.5008 0.0115 0.4832 0.0142C0.4692 0.0164 0.4641 0.0095 0.4670 -0.0075C0.4698 -0.0239 0.4693 -0.0278 0.4628 -0.0414C0.4507 -0.0663 0.4392 -0.0771 0.4144 -0.0867C0.4065 -0.0898 0.3955 -0.0949 0.3899 -0.0981C0.3643 -0.1129 0.3481 -0.1133 0.3282 -0.0996C0.3173 -0.0922 0.3089 -0.0903 0.2872 -0.0902C0.2797 -0.0902 0.2704 -0.0890 0.2632 -0.0872C0.2455 -0.0826 0.2395 -0.0869 0.2343 -0.1083C0.2329 -0.1142 0.2298 -0.1240 0.2274 -0.1301C0.2249 -0.1362 0.2207 -0.1482 0.2180 -0.1567C0.2119 -0.1756 0.2070 -0.1839 0.1880 -0.2074C0.1690 -0.2308 0.1567 -0.2425 0.1449 -0.2484C0.1395 -0.2512 0.1307 -0.2576 0.1247 -0.2633C0.1126 -0.2747 0.1088 -0.2761 0.0956 -0.2736C0.0849 -0.2716 0.0811 -0.2726 0.0729 -0.2799C0.0595 -0.2917 0.0516 -0.2930 0.0375 -0.2854C0.0275 -0.2801 0.0213 -0.2798 0.0071 -0.2841C-0.0090 -0.2890 -0.0189 -0.2877 -0.0522 -0.2766C-0.0901 -0.2640 -0.0890 -0.2649 -0.1061 -0.2304C-0.1190 -0.2043 -0.1205 -0.2019 -0.1329 -0.1887C-0.1515 -0.1689 -0.1519 -0.1651 -0.1376 -0.1457C-0.1274 -0.1319 -0.1273 -0.1321 -0.1431 -0.1245C-0.1549 -0.1188 -0.1597 -0.1141 -0.1597 -0.1081C-0.1597 -0.0957 -0.1467 -0.0908 -0.1035 -0.0867C-0.0802 -0.0844 -0.0707 -0.0815 -0.0697 -0.0764C-0.0685 -0.0700 -0.0711 -0.0643 -0.0771 -0.0602C-0.0894 -0.0517 -0.0908 -0.0417 -0.0842 -0.0104C-0.0767 0.0254 -0.0672 0.0387 -0.0552 0.0303C-0.0452 0.0233 -0.0471 0.0728 -0.0580 0.1013C-0.0687 0.1295 -0.0874 0.1660 -0.0898 0.1636C-0.0919 0.1615 -0.0876 0.1496 -0.0814 0.1401C-0.0664 0.1174 -0.0654 0.0942 -0.0793 0.0908C-0.0892 0.0883 -0.0952 0.0972 -0.1014 0.1235C-0.1045 0.1365 -0.1076 0.1452 -0.1133 0.1562C-0.1246 0.1784 -0.1250 0.1861 -0.1151 0.1944C-0.1107 0.1981 -0.1107 0.1981 -0.1143 0.2059C-0.1163 0.2102 -0.1218 0.2180 -0.1264 0.2233C-0.1323 0.2299 -0.1374 0.2380 -0.1427 0.2492C-0.1507 0.2661 -0.1749 0.3016 -0.1709 0.2906Z", "blD": "M0.3638 0.3553C0.3453 0.3521 0.3058 0.3410 0.2938 0.3357C0.2726 0.3264 0.2644 0.3204 0.2454 0.3000C0.2160 0.2686 0.2103 0.2591 0.2055 0.2334C0.2039 0.2250 0.2012 0.2131 0.1996 0.2070C0.1911 0.1757 0.1985 0.1261 0.2150 0.1029C0.2293 0.0829 0.2499 0.0684 0.2765 0.0596C0.2905 0.0550 0.3256 0.0558 0.3407 0.0611C0.3576 0.0670 0.3719 0.0760 0.3839 0.0881C0.4021 0.1065 0.4068 0.1221 0.4017 0.1470C0.4003 0.1533 0.3993 0.1611 0.3993 0.1642C0.3993 0.1696 0.3989 0.1700 0.3933 0.1717C0.3807 0.1755 0.3732 0.1703 0.3633 0.1507C0.3406 0.1055 0.3019 0.1448 0.3142 0.2006C0.3245 0.2471 0.3569 0.2730 0.4176 0.2833C0.4812 0.2941 0.5550 0.2634 0.5930 0.2103C0.6268 0.1631 0.6355 0.0806 0.6116 0.0335C0.5919 -0.0052 0.5820 -0.0160 0.5513 -0.0319C0.5190 -0.0486 0.5164 -0.0518 0.5044 -0.0909C0.4919 -0.1317 0.4557 -0.1636 0.4015 -0.1816C0.3769 -0.1898 0.3663 -0.1911 0.3278 -0.1905C0.2852 -0.1899 0.2813 -0.1918 0.2687 -0.2203C0.2653 -0.2281 0.2613 -0.2343 0.2391 -0.2664C0.2286 -0.2816 0.1912 -0.3182 0.1767 -0.3276C0.1641 -0.3356 0.1306 -0.3518 0.1170 -0.3564C0.0607 -0.3752 -0.0245 -0.3712 -0.0932 -0.3465C-0.1205 -0.3366 -0.1289 -0.3316 -0.1518 -0.3117C-0.1824 -0.2851 -0.1854 -0.2819 -0.1995 -0.2610C-0.2181 -0.2333 -0.2225 -0.2256 -0.2293 -0.2083C-0.2425 -0.1753 -0.2453 -0.1727 -0.2846 -0.1583C-0.3181 -0.1460 -0.3180 -0.1460 -0.3211 -0.1641C-0.3269 -0.1971 -0.3290 -0.2292 -0.3264 -0.2427C-0.3190 -0.2801 -0.2981 -0.3145 -0.2696 -0.3361C-0.2358 -0.3616 -0.2237 -0.3673 -0.1915 -0.3725C-0.1676 -0.3765 -0.1597 -0.3801 -0.1391 -0.3969C-0.1307 -0.4038 -0.1185 -0.4123 -0.1121 -0.4158C-0.1057 -0.4193 -0.0943 -0.4258 -0.0868 -0.4301C-0.0654 -0.4427 -0.0471 -0.4494 -0.0155 -0.4564C0.0097 -0.4620 0.0726 -0.4624 0.0985 -0.4571C0.1400 -0.4486 0.1991 -0.4211 0.2227 -0.3992C0.2276 -0.3947 0.2376 -0.3860 0.2449 -0.3801C0.2719 -0.3578 0.2792 -0.3491 0.2861 -0.3307C0.2912 -0.3172 0.2948 -0.3103 0.3032 -0.2980C0.3071 -0.2923 0.3127 -0.2837 0.3156 -0.2790C0.3236 -0.2662 0.3299 -0.2638 0.3493 -0.2660C0.3686 -0.2682 0.3795 -0.2681 0.3956 -0.2655C0.4029 -0.2643 0.4171 -0.2623 0.4272 -0.2610C0.4577 -0.2571 0.4716 -0.2512 0.4980 -0.2308C0.5123 -0.2197 0.5344 -0.1978 0.5420 -0.1871C0.5490 -0.1772 0.5629 -0.1416 0.5680 -0.1201C0.5753 -0.0894 0.5793 -0.0843 0.6056 -0.0717C0.6319 -0.0591 0.6624 -0.0339 0.6703 -0.0184C0.6743 -0.0105 0.6841 0.0191 0.6889 0.0373C0.6964 0.0658 0.6969 0.1230 0.6901 0.1560C0.6881 0.1658 0.6854 0.1791 0.6842 0.1856C0.6816 0.2002 0.6683 0.2301 0.6588 0.2430C0.6263 0.2871 0.6114 0.3019 0.5804 0.3210C0.5518 0.3387 0.4901 0.3532 0.4525 0.3510C0.4416 0.3504 0.4281 0.3511 0.4070 0.3533C0.3776 0.3563 0.3712 0.3566 0.3638 0.3553Z", "blL": "M0.3124 0.4185C0.3090 0.4178 0.2992 0.4141 0.2907 0.4104C0.2822 0.4067 0.2697 0.4024 0.2629 0.4008C0.2444 0.3965 0.2435 0.3960 0.2265 0.3796C0.2178 0.3713 0.2029 0.3586 0.1934 0.3514C0.1670 0.3317 0.1679 0.3332 0.1573 0.2913C0.1544 0.2795 0.1506 0.2652 0.1491 0.2595C0.1441 0.2417 0.1439 0.2236 0.1483 0.2063C0.1504 0.1982 0.1528 0.1861 0.1537 0.1795C0.1560 0.1626 0.1572 0.1593 0.1663 0.1442C0.1766 0.1272 0.1781 0.1227 0.1818 0.0982C0.1863 0.0683 0.1920 0.0602 0.2255 0.0362C0.2458 0.0217 0.2819 0.0089 0.3027 0.0089C0.3309 0.0089 0.3765 0.0239 0.4007 0.0411C0.4220 0.0563 0.4281 0.0642 0.4334 0.0835C0.4351 0.0901 0.4385 0.1002 0.4408 0.1061C0.4461 0.1194 0.4465 0.1307 0.4421 0.1399C0.4382 0.1479 0.4190 0.1662 0.4120 0.1685C0.3993 0.1727 0.3974 0.1690 0.4015 0.1475C0.4066 0.1214 0.4023 0.1067 0.3839 0.0881C0.3719 0.0760 0.3576 0.0670 0.3407 0.0611C0.3256 0.0558 0.2905 0.0550 0.2765 0.0596C0.2499 0.0684 0.2293 0.0829 0.2150 0.1029C0.1985 0.1261 0.1911 0.1757 0.1996 0.2070C0.2012 0.2131 0.2039 0.2250 0.2055 0.2334C0.2103 0.2591 0.2160 0.2686 0.2454 0.3000C0.2714 0.3279 0.2886 0.3372 0.3342 0.3484C0.3696 0.3570 0.3704 0.3571 0.4059 0.3534C0.4280 0.3511 0.4414 0.3504 0.4525 0.3510C0.4901 0.3532 0.5518 0.3387 0.5804 0.3210C0.6114 0.3019 0.6263 0.2871 0.6588 0.2430C0.6683 0.2301 0.6816 0.2002 0.6842 0.1856C0.6854 0.1791 0.6881 0.1658 0.6901 0.1560C0.6969 0.1230 0.6964 0.0658 0.6889 0.0373C0.6841 0.0191 0.6743 -0.0105 0.6703 -0.0184C0.6624 -0.0339 0.6319 -0.0591 0.6056 -0.0717C0.5793 -0.0843 0.5753 -0.0894 0.5680 -0.1201C0.5629 -0.1416 0.5490 -0.1772 0.5420 -0.1871C0.5344 -0.1978 0.5123 -0.2197 0.4980 -0.2308C0.4716 -0.2512 0.4577 -0.2571 0.4272 -0.2610C0.4171 -0.2623 0.4029 -0.2643 0.3956 -0.2655C0.3795 -0.2681 0.3686 -0.2682 0.3493 -0.2660C0.3299 -0.2638 0.3236 -0.2662 0.3156 -0.2790C0.3127 -0.2837 0.3071 -0.2923 0.3032 -0.2980C0.2948 -0.3103 0.2912 -0.3172 0.2861 -0.3307C0.2792 -0.3491 0.2719 -0.3578 0.2449 -0.3801C0.2376 -0.3860 0.2276 -0.3947 0.2227 -0.3992C0.1991 -0.4211 0.1400 -0.4486 0.0985 -0.4571C0.0726 -0.4624 0.0097 -0.4620 -0.0155 -0.4564C-0.0471 -0.4494 -0.0654 -0.4427 -0.0868 -0.4301C-0.0943 -0.4258 -0.1057 -0.4193 -0.1121 -0.4158C-0.1185 -0.4123 -0.1307 -0.4038 -0.1391 -0.3969C-0.1597 -0.3801 -0.1676 -0.3765 -0.1915 -0.3725C-0.2237 -0.3673 -0.2358 -0.3616 -0.2696 -0.3361C-0.2918 -0.3193 -0.3064 -0.2996 -0.3174 -0.2718C-0.3299 -0.2400 -0.3306 -0.2227 -0.3217 -0.1686C-0.3184 -0.1486 -0.3184 -0.1486 -0.3312 -0.1351C-0.3509 -0.1145 -0.3722 -0.0847 -0.3813 -0.0651C-0.3911 -0.0441 -0.3831 -0.0191 -0.3591 0.0045C-0.3483 0.0152 -0.3414 0.0185 -0.3246 0.0212C-0.3173 0.0224 -0.3078 0.0248 -0.3035 0.0265C-0.2905 0.0316 -0.2840 0.0295 -0.2781 0.0180C-0.2726 0.0073 -0.2638 0.0026 -0.2581 0.0074C-0.2504 0.0138 -0.2590 0.0484 -0.2708 0.0583C-0.2820 0.0677 -0.3096 0.0784 -0.3228 0.0784C-0.3369 0.0784 -0.3829 0.0699 -0.3915 0.0657C-0.4054 0.0589 -0.4270 0.0331 -0.4385 0.0096C-0.4576 -0.0294 -0.4588 -0.0534 -0.4434 -0.0887C-0.4279 -0.1243 -0.4257 -0.1275 -0.4061 -0.1423C-0.3732 -0.1673 -0.3682 -0.1790 -0.3779 -0.2080C-0.3847 -0.2284 -0.3855 -0.2370 -0.3823 -0.2560C-0.3763 -0.2919 -0.3693 -0.3111 -0.3568 -0.3261C-0.3527 -0.3309 -0.3469 -0.3389 -0.3438 -0.3438C-0.3368 -0.3550 -0.3327 -0.3594 -0.3216 -0.3679C-0.3167 -0.3716 -0.3092 -0.3779 -0.3048 -0.3819C-0.2947 -0.3910 -0.2913 -0.3927 -0.2762 -0.3962C-0.2695 -0.3978 -0.2604 -0.4005 -0.2560 -0.4022C-0.2442 -0.4068 -0.2298 -0.4094 -0.2033 -0.4116C-0.1709 -0.4144 -0.1686 -0.4157 -0.1504 -0.4414C-0.1311 -0.4686 -0.1222 -0.4764 -0.1008 -0.4850C-0.0937 -0.4878 -0.0843 -0.4931 -0.0786 -0.4975C-0.0645 -0.5084 -0.0626 -0.5095 -0.0433 -0.5170C-0.0170 -0.5272 -0.0126 -0.5278 0.0399 -0.5289C0.0934 -0.5299 0.1014 -0.5292 0.1368 -0.5203C0.1881 -0.5075 0.2081 -0.4975 0.2167 -0.4804C0.2216 -0.4708 0.2249 -0.4680 0.2372 -0.4634C0.2500 -0.4585 0.2507 -0.4581 0.2731 -0.4410C0.2931 -0.4258 0.2992 -0.4194 0.3075 -0.4052C0.3392 -0.3506 0.3392 -0.3506 0.3418 -0.3306C0.3457 -0.3006 0.3535 -0.2969 0.3963 -0.3047C0.4261 -0.3102 0.4462 -0.3096 0.4739 -0.3025C0.5051 -0.2946 0.5089 -0.2924 0.5376 -0.2650C0.5510 -0.2522 0.5690 -0.2355 0.5776 -0.2277C0.6038 -0.2042 0.6069 -0.1978 0.6100 -0.1622C0.6131 -0.1251 0.6200 -0.1146 0.6494 -0.1020C0.6578 -0.0984 0.6723 -0.0905 0.6817 -0.0843C0.6910 -0.0781 0.7040 -0.0701 0.7104 -0.0665C0.7224 -0.0597 0.7263 -0.0558 0.7432 -0.0340C0.7643 -0.0067 0.7799 0.0359 0.7836 0.0769C0.7845 0.0862 0.7857 0.0959 0.7864 0.0983C0.7883 0.1057 0.7873 0.1302 0.7847 0.1390C0.7820 0.1480 0.7779 0.1823 0.7778 0.1954C0.7778 0.2016 0.7769 0.2055 0.7742 0.2102C0.7721 0.2137 0.7701 0.2196 0.7695 0.2233C0.7687 0.2292 0.7669 0.2316 0.7534 0.2455C0.7365 0.2630 0.7351 0.2652 0.7281 0.2859C0.7252 0.2944 0.7202 0.3052 0.7160 0.3118C0.7120 0.3180 0.7070 0.3266 0.7048 0.3308C0.6993 0.3418 0.6932 0.3481 0.6788 0.3579C0.6719 0.3626 0.6618 0.3702 0.6566 0.3747C0.6270 0.4000 0.5817 0.4152 0.5486 0.4108C0.5409 0.4098 0.5223 0.4089 0.5072 0.4089C0.4799 0.4089 0.4799 0.4089 0.4636 0.4035C0.4359 0.3942 0.4302 0.3944 0.4032 0.4053C0.3738 0.4171 0.3336 0.4230 0.3124 0.4185Z", "teal": "M-0.3083 0.5285C-0.3189 0.5273 -0.3379 0.5247 -0.3505 0.5226C-0.3631 0.5206 -0.3833 0.5179 -0.3954 0.5167C-0.4146 0.5149 -0.4192 0.5139 -0.4316 0.5089C-0.4394 0.5058 -0.4575 0.4995 -0.4718 0.4949C-0.4910 0.4887 -0.5020 0.4841 -0.5139 0.4774C-0.5228 0.4724 -0.5366 0.4655 -0.5444 0.4620C-0.5752 0.4485 -0.6111 0.4230 -0.6381 0.3956C-0.6487 0.3849 -0.6615 0.3733 -0.6666 0.3699C-0.6807 0.3603 -0.6852 0.3558 -0.6942 0.3424C-0.6987 0.3357 -0.7040 0.3291 -0.7060 0.3278C-0.7080 0.3265 -0.7208 0.3145 -0.7345 0.3013C-0.7481 0.2880 -0.7634 0.2740 -0.7685 0.2702C-0.7791 0.2620 -0.7839 0.2565 -0.7828 0.2535C-0.7809 0.2488 -0.7728 0.2516 -0.7448 0.2665C-0.7292 0.2748 -0.7117 0.2840 -0.7060 0.2868C-0.6957 0.2920 -0.6955 0.2922 -0.6931 0.3004C-0.6894 0.3128 -0.6781 0.3238 -0.6691 0.3238C-0.6678 0.3238 -0.6586 0.3317 -0.6487 0.3412C-0.6348 0.3546 -0.6278 0.3601 -0.6183 0.3652C-0.6116 0.3688 -0.6000 0.3770 -0.5927 0.3833C-0.5726 0.4007 -0.5633 0.4053 -0.5380 0.4103C-0.5312 0.4117 -0.5121 0.4160 -0.4954 0.4200C-0.4410 0.4330 -0.3868 0.4387 -0.3320 0.4372C-0.2840 0.4358 -0.2675 0.4326 -0.2115 0.4134C-0.1815 0.4031 -0.1798 0.4024 -0.1654 0.3929C-0.1586 0.3885 -0.1483 0.3824 -0.1425 0.3795C-0.1366 0.3766 -0.1278 0.3707 -0.1228 0.3664C-0.1178 0.3621 -0.1059 0.3526 -0.0964 0.3453C-0.0848 0.3363 -0.0766 0.3286 -0.0713 0.3216C-0.0670 0.3159 -0.0575 0.3048 -0.0502 0.2968C-0.0406 0.2863 -0.0352 0.2789 -0.0305 0.2695C-0.0269 0.2624 -0.0193 0.2503 -0.0135 0.2426C-0.0031 0.2286 0.0112 0.1972 0.0163 0.1774C0.0172 0.1738 0.0209 0.1617 0.0244 0.1505C0.0398 0.1025 0.0439 0.0378 0.0340 -0.0009C0.0294 -0.0188 0.0139 -0.0585 0.0078 -0.0678C-0.0012 -0.0817 -0.0183 -0.0974 -0.0333 -0.1056C-0.0569 -0.1186 -0.0621 -0.1261 -0.0560 -0.1380C-0.0391 -0.1710 0.0390 -0.1783 0.0807 -0.1509C0.0936 -0.1424 0.1215 -0.1113 0.1279 -0.0984C0.1377 -0.0785 0.1494 -0.0489 0.1517 -0.0382C0.1603 0.0021 0.1517 0.0726 0.1331 0.1147C0.1243 0.1346 0.1210 0.1462 0.1161 0.1752C0.1120 0.1998 0.1119 0.2001 0.1025 0.2314C0.0942 0.2594 0.0918 0.2634 0.0725 0.2824C0.0638 0.2910 0.0530 0.3033 0.0485 0.3098C0.0377 0.3254 0.0097 0.3521 -0.0098 0.3654C-0.0183 0.3712 -0.0275 0.3787 -0.0300 0.3819C-0.0364 0.3898 -0.0445 0.3952 -0.0569 0.3997C-0.0703 0.4045 -0.0751 0.4067 -0.1072 0.4218C-0.1393 0.4370 -0.1555 0.4424 -0.1819 0.4465C-0.1929 0.4482 -0.2118 0.4519 -0.2240 0.4548C-0.2594 0.4629 -0.2604 0.4631 -0.3039 0.4642C-0.3529 0.4655 -0.3597 0.4671 -0.3573 0.4768C-0.3560 0.4819 -0.3474 0.4847 -0.3249 0.4872C-0.3142 0.4884 -0.3001 0.4904 -0.2938 0.4917C-0.2652 0.4972 -0.2015 0.4909 -0.1671 0.4791C-0.1577 0.4759 -0.1444 0.4719 -0.1373 0.4703C-0.1103 0.4641 -0.0484 0.4345 -0.0320 0.4200C-0.0266 0.4152 -0.0174 0.4085 -0.0115 0.4051C0.0287 0.3822 0.0653 0.3526 0.0976 0.3169C0.1113 0.3019 0.1218 0.3059 0.1333 0.3305C0.1425 0.3502 0.1343 0.3776 0.1144 0.3940C0.1094 0.3981 0.0966 0.4088 0.0858 0.4177C0.0407 0.4553 0.0354 0.4589 0.0100 0.4687C0.0013 0.4721 -0.0130 0.4792 -0.0218 0.4845C-0.0305 0.4898 -0.0398 0.4951 -0.0425 0.4962C-0.0530 0.5006 -0.1112 0.5146 -0.1312 0.5175C-0.1427 0.5192 -0.1577 0.5223 -0.1645 0.5244C-0.1838 0.5304 -0.2683 0.5328 -0.3083 0.5285Z"};
+const CLOUD_P2D={};function cloudPath(k){return CLOUD_P2D[k]||(CLOUD_P2D[k]=new Path2D(CLOUD_SVG[k]))}
+const CLOUD_BOUNDS=[-.82,-.57,.82,.57];
+function cloudUnitOps(){return [{layer:6,path:"sil"},{layer:2,path:"orL"},{layer:1,path:"orD"},{layer:4,path:"blL"},{layer:3,path:"blD"},{layer:5,path:"teal"}]}
+const CLOUD_LAYERS=()=>[
+  {name:"地色", pref:["底色","主色"]},
+  {name:"橙卷带 · 深晕", pref:["主色","辅色"]},
+  {name:"橙卷带 · 浅晕", pref:["辅色","点缀","主色"]},
+  {name:"蓝卷带 · 深晕", pref:["辅色","主色"]},
+  {name:"蓝卷带 · 浅晕", pref:["点缀","辅色","主色"]},
+  {name:"浪卷 · 云尾", pref:["点缀","辅色","主色"]},
+  {name:"勾边 · 亮线", pref:["勾线","点缀","底色"]}];
+const CLOUD_DISTINCT=[[1,2],[3,4],[1,3],[2,4],[1,6],[2,6],[3,6],[4,6],[5,6],[0,1],[0,3],[0,5],[1,5],[3,5]];
+MOTIFS.xiangyun = {
+  name:"祥云·散点", tiled:true, sprite:true, dens:2, fixKey:"cloud", distinct:CLOUD_DISTINCT, trim:4,
+  spec:"彩绘勾卷祥云（依参考图逐色块拟合三次贝塞尔曲线）：左橙卷、右蓝卷两组勾卷，各分深晕、浅晕两道卷带；蓝色大卷带自左上翻过云顶，沿右侧旋入右卷心；中部青绿浪卷升起并拖出双股云尾；色带间留亮线，通体勾边。朵云一正一反、大小错位散点排列。",
+  layers:CLOUD_LAYERS(),
+  params:{S:[.26,.4,.33], F:[.12,.2,.16]},
+  unit:cloudUnitOps, bounds:CLOUD_BOUNDS,
+  place(P){return [[.3,.32,P.S,1],[.72,.8,P.S,-1],[.84,.2,P.F,-1],[.16,.74,P.F,1]].map(([x,y,s,f])=>({x,y,s,f}))}
+};
+MOTIFS.dieyun = {
+  name:"叠云·满地", tiled:true, sprite:true, dens:1, fixKey:"cloud", distinct:CLOUD_DISTINCT, trim:4,
+  spec:"叠云（满地祥云）：同一彩绘勾卷祥云逐行错半位排列，行行相叠、下行压上行，云尾藏于下一朵之后；单朵形制与参考图一致。",
+  layers:CLOUD_LAYERS(),
+  params:{S:[.26,.34,.3]},
+  unit:cloudUnitOps, bounds:CLOUD_BOUNDS,
+  place(P){const out=[];const rows=[0,1,2,3].map(j=>({y:.1+j*.25,f:j%2?-1:1,xs:[.25+(j%2)*.25,.75+(j%2)*.25]}));
+    for(const r of rows)for(const x of r.xs)out.push({x,y:r.y,s:P.S,f:r.f});
+    for(const x of rows[0].xs)out.push({x,y:rows[0].y,s:P.S,f:rows[0].f,clipY:rows[0].y});return out}
+};
+
+/* ---------- 冰裂纹：直线分割、丁字相接，大开片铁线、小开片金丝 ---------- */
+function polyArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1]}return Math.abs(a)/2}
+function centroid(P){let x=0,y=0;for(const p of P){x+=p[0];y+=p[1]}return [x/P.length,y/P.length]}
+function majorAngle(P){const [cx,cy]=centroid(P);let a=0,b=0,c=0;for(const p of P){const dx=p[0]-cx,dy=p[1]-cy;a+=dx*dx;b+=dx*dy;c+=dy*dy}return .5*Math.atan2(2*b,a-c)}
+function splitConvex(P,px,py,ang){const nx=-Math.sin(ang),ny=Math.cos(ang);const A=[],B=[],cut=[],ei=[];
+  for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];const dp=(p[0]-px)*nx+(p[1]-py)*ny,dq=(q[0]-px)*nx+(q[1]-py)*ny;
+    if(dp>=0)A.push(p);if(dp<=0)B.push(p);if(dp*dq<0){const t=dp/(dp-dq);const X=[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t];A.push(X);B.push(X);cut.push(X);ei.push(i)}}
+  if(cut.length!==2||A.length<3||B.length<3)return null;const n=P.length,dd=Math.abs(ei[0]-ei[1]);const r=[A,B,cut];r.adjacent=n>=4&&(dd===1||dd===n-1);return r}
+function minAngle(P){let m=Math.PI;for(let i=0;i<P.length;i++){const a=P[(i+P.length-1)%P.length],b=P[i],c=P[(i+1)%P.length];
+  const v1=[a[0]-b[0],a[1]-b[1]],v2=[c[0]-b[0],c[1]-b[1]];const l=Math.hypot(...v1)*Math.hypot(...v2);if(l<1e-12)continue;
+  m=Math.min(m,Math.acos(Math.max(-1,Math.min(1,(v1[0]*v2[0]+v1[1]*v2[1])/l))))}return m}
+function crack(cells,rnd,target,segs,minFrac){
+  cells.sort((a,b)=>polyArea(b)-polyArea(a));let guard=0;
+  while(polyArea(cells[0])>target&&guard++<4000){const P=cells.shift();const ar=polyArea(P),[cx,cy]=centroid(P),s=Math.sqrt(ar);let ok=null;
+    for(let tries=0;tries<40&&!ok;tries++){const ang=majorAngle(P)+Math.PI/2+(rnd()-.5)*1.1;const px=cx+(rnd()-.5)*.4*s,py=cy+(rnd()-.5)*.4*s;
+      const r=splitConvex(P,px,py,ang);if(!r)continue;const a1=polyArea(r[0]),a2=polyArea(r[1]);
+      if(Math.min(a1,a2)<minFrac*ar)continue;const ma=Math.min(minAngle(r[0]),minAngle(r[1]));if(ma<(tries<16?.62:.45))continue;if(r.adjacent&&tries<30)continue;ok=r}
+    if(!ok){ok=splitConvex(P,cx,cy,majorAngle(P)+Math.PI/2);if(!ok){cells.push(P);continue}}
+    segs.push(ok[2]);cells.push(ok[0],ok[1]);cells.sort((a,b)=>polyArea(b)-polyArea(a))}
+  return cells}
+const _iceCache=new Map();
+function iceGeometry(seed,density){const key=seed+":"+density;if(_iceCache.has(key))return _iceCache.get(key);
+  const rnd=mulberry32(seed*9973+density);const big=[],small=[];
+  // 不规则基础网格：交点抖动，网格线在每个交点处折向，避免贯穿全幅的长直线
+  const G=2+Math.floor(density/2),pt=[];
+  for(let j=0;j<=G;j++){pt.push([]);for(let i=0;i<=G;i++){const edge=i===0||j===0||i===G||j===G;
+    pt[j].push([i/G+(edge&&(i===0||i===G)?0:(rnd()-.5)*.55/G),j/G+(edge&&(j===0||j===G)?0:(rnd()-.5)*.55/G)])}}
+  let cells=[];for(let j=0;j<G;j++)for(let i=0;i<G;i++){cells.push([pt[j][i],pt[j][i+1],pt[j+1][i+1],pt[j+1][i]]);
+    if(i<G-1)big.push([pt[j][i+1],pt[j+1][i+1]]);if(j<G-1)big.push([pt[j+1][i],pt[j+1][i+1]])}
+  const n1=6+density*5;const lv1=[];for(const c of cells)lv1.push(...crack([c],rnd,1/n1,big,.28));
+  const fine=[];for(const c of lv1){const k=2+Math.floor(rnd()*4);fine.push(...crack([c],rnd,polyArea(c)/k*1.05,small,.22))}
+  const tone=fine.map(()=>rnd());const g={cells:fine,tone,big,small};_iceCache.set(key,g);return g}
+MOTIFS.binglie = {
+  name:"冰裂纹", tiled:false, reseed:true, dens:3,
+  spec:"冰裂纹：以直线分割成不规则多边形冰片，裂线相交多为丁字接，无弧线、无锐角碎屑；先分大开片（铁线，粗而深），片内再分小开片（金丝，细而浅），即「金丝铁线」两级开片。",
+  layers:[
+    {name:"冰片（主）", pref:["底色","主色"]},
+    {name:"冰片（次）", pref:["主色","辅色","底色"]},
+    {name:"冰片（三）", pref:["辅色","主色","点缀"]},
+    {name:"铁线（大开片）", pref:["勾线"]},
+    {name:"金丝（小开片）", pref:["点缀","辅色"]}
+  ],
+  params:{LW1:[.002,.011,.006], LW2:[.0008,.005,.0022], FB:[0,.8,.12], FC:[0,.6,.06]},
+  ops(P,ctx){const g=iceGeometry(ctx.seed,ctx.density);
+    const fillTone=(lo,hi)=>p=>g.cells.forEach((c,i)=>{const t=g.tone[i];if(t>=lo&&t<hi){p.moveTo(c[0][0],c[0][1]);for(const q of c)p.lineTo(q[0],q[1]);p.closePath()}});
+    const lines=S=>p=>S.forEach(s=>{p.moveTo(s[0][0],s[0][1]);p.lineTo(s[1][0],s[1][1])});
+    return [
+      {layer:1, fill:true, build:fillTone(0,P.FB)},
+      {layer:2, fill:true, build:fillTone(P.FB,P.FB+P.FC)},
+      {layer:4, stroke:P.LW2, build:lines(g.small)},
+      {layer:3, stroke:P.LW1, build:lines(g.big)}
+    ]}
+};
+
+/* ---------- 海水鳞纹：同心弧鳞层层叠压（逐像素解析） ---------- */
+MOTIFS.haishui = {
+  name:"鱼鳞水纹", tiled:true, analytic:true, dens:2,
+  spec:"鱼鳞水纹：等大圆鳞按行错半位排列，下行压上行，露出下半弧；每鳞内作同心弧线三道，由外向内分环设色。",
+  layers:[
+    {name:"鳞心", pref:["底色","辅色"]},
+    {name:"外环", pref:["主色","辅色"]},
+    {name:"中环", pref:["辅色","主色","底色"]},
+    {name:"弧线", pref:["勾线"]},
+    {name:"鳞心珠", pref:["点缀","辅色"]}
+  ],
+  params:{A:[.55,.9,.72], B:[.2,.6,.44], LW:[.02,.12,.05], D:[.04,.25,.1]},
+  label(x,y,P){const r=.25;let best=-1,bk=0;const Y=y/r;
+    for(let j=Math.floor(Y)-1;j<=Math.floor(Y)+2;j++){const off=(((j%2)+2)%2)*r;const cx=Math.round((x-off)/(2*r))*2*r+off,cy=j*r;const d=Math.hypot(x-cx,y-cy);if(d<r&&j>best){best=j;bk=d/r}}
+    if(best<0)return 0;const lw=P.LW;
+    if(bk>1-lw)return 3;if(bk>P.A+lw/2)return 1;if(bk>P.A-lw/2)return 3;if(bk>P.B+lw/2)return 2;if(bk>P.B-lw/2)return 3;if(bk<P.D)return 4;return 0}
+};
+
+/* ---------- 方胜：双菱压角相叠，四方连续 ---------- */
+function diamond(p,cx,cy,h){p.moveTo(cx,cy-h);p.lineTo(cx+h,cy);p.lineTo(cx,cy+h);p.lineTo(cx-h,cy);p.closePath()}
+MOTIFS.fangsheng = {
+  name:"方胜", tiled:true, dens:2,
+  spec:"方胜：两个相同菱形沿横轴压角相叠，交叠处为小菱；菱内套菱成回形；单元于格心与四角交替横竖排列，四方连续。",
+  layers:[
+    {name:"地色", pref:["底色","主色"]},
+    {name:"菱身", pref:["主色","辅色","底色"]},
+    {name:"压角交叠", pref:["辅色","点缀"]},
+    {name:"勾线 · 套菱线", pref:["勾线"]},
+    {name:"菱心", pref:["点缀","辅色"]}
+  ],
+  params:{H:[.14,.32,.22], O:[.3,.7,.5], LW:[.003,.02,.006], K:[.1,.6,.3]},
+  ops(P){const H=P.H, o=H*P.O;
+    const units=[[.5,.5,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]];
+    const U=(fn)=>p=>units.forEach(([x,y,rot])=>{p.save();p.translate(x,y);if(rot)p.rotate(Math.PI/2);fn(p);p.restore()});
+    return [
+      {layer:3, stroke:2*P.LW, build:U(p=>{diamond(p,-o,0,H);diamond(p,o,0,H)})},
+      {layer:1, fill:true, build:U(p=>{diamond(p,-o,0,H);diamond(p,o,0,H)})},
+      {layer:2, fill:true, clip:U(p=>diamond(p,-o,0,H)), build:U(p=>diamond(p,o,0,H))},
+      {layer:3, stroke:2*P.LW, build:U(p=>{diamond(p,-o,0,H);diamond(p,o,0,H)}), strokeOnly:true},
+      {layer:3, stroke:1.2*P.LW, build:U(p=>{diamond(p,-o,0,H*.62);diamond(p,o,0,H*.62)})},
+      {layer:4, fill:true, build:U(p=>{diamond(p,-o-H*.38,0,H*P.K*.5);diamond(p,o+H*.38,0,H*P.K*.5)})}
+    ]}
+};
+
+/* 每个子路径单独填充，避免不同绕向的重叠形状互相抵消 */
+function fillProxy(g){let open=false;const flush=()=>{if(open){g.fill();open=false}};
+  return {moveTo(x,y){flush();g.beginPath();g.moveTo(x,y);open=true},lineTo:(x,y)=>g.lineTo(x,y),
+    bezierCurveTo:(a,b,c,d,e,f)=>g.bezierCurveTo(a,b,c,d,e,f),arc:(a,b,c,d,e,f)=>g.arc(a,b,c,d,e,f),closePath:()=>g.closePath(),
+    save:()=>g.save(),restore:()=>g.restore(),translate:(a,b)=>g.translate(a,b),rotate:a=>g.rotate(a),scale:(a,b)=>g.scale(a,b),end:flush}}
+
+/* 精确欧氏距离变换（Felzenszwalb）：返回区域内每个像素到区域外的距离（像素） */
+function edt1(f,n,d,v,z){let k=0;v[0]=0;z[0]=-1e20;z[1]=1e20;
+  for(let q=1;q<n;q++){let s;do{const p=v[k];s=((f[q]+q*q)-(f[p]+p*p))/(2*q-2*p);if(s<=z[k])k--;else break}while(k>=0);k++;v[k]=q;z[k]=s;z[k+1]=1e20}
+  k=0;for(let q=0;q<n;q++){while(z[k+1]<q)k++;const p=v[k];d[q]=(q-p)*(q-p)+f[p]}}
+function edt(m,W,H){H=H||W;const INF=1e12,N=W*H,g=new Float64Array(N);for(let i=0;i<N;i++)g[i]=m[i]?INF:0;
+  const M=Math.max(W,H),f=new Float64Array(M),d=new Float64Array(M),v=new Int32Array(M),z=new Float64Array(M+1);
+  for(let x=0;x<W;x++){for(let y=0;y<H;y++)f[y]=g[y*W+x];edt1(f,H,d,v,z);for(let y=0;y<H;y++)g[y*W+x]=d[y]}
+  for(let y=0;y<H;y++){for(let x=0;x<W;x++)f[x]=g[y*W+x];edt1(f,W,d,v,z);for(let x=0;x<W;x++)g[y*W+x]=Math.sqrt(d[x])}
+  return g}
+
+function renderMask(op,offs,g,W,T){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,W,W);g.fillStyle="#fff";
+  for(const [i,j] of offs){g.setTransform(T,0,0,T,i*T,j*T);const px=fillProxy(g);op.build(px);px.end()}
+  const d=g.getImageData(0,0,W,W).data,m=new Uint8Array(W*W);for(let k=0;k<W*W;k++)m[k]=d[k*4+3]>=128?1:0;return m}
+
+/* 单元（精灵）渲染：把一朵云按构件层渲染成小图，再按排列顺序逐朵盖印，保证前后叠压关系正确 */
+function renderSprite(ops,B,sc,cv){const w=Math.ceil((B[2]-B[0])*sc),h=Math.ceil((B[3]-B[1])*sc),N=w*h,lab=new Uint8Array(N).fill(255);
+  cv.width=w;cv.height=h;const g=cv.getContext("2d",{willReadFrequently:true});
+  for(const op of ops){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,w,h);g.fillStyle=g.strokeStyle="#fff";g.lineCap="round";g.lineJoin="round";
+    g.setTransform(sc,0,0,sc,-B[0]*sc,-B[1]*sc);
+    if(op.path)g.fill(cloudPath(op.path),"evenodd");else if(op.fill||op.band){const px=fillProxy(g);op.build(px);px.end()}else{g.beginPath();op.build(g);g.lineWidth=op.stroke;g.stroke()}
+    const d=g.getImageData(0,0,w,h).data;
+    if(op.band){const m=new Uint8Array(N);for(let k=0;k<N;k++)m[k]=d[k*4+3]>=128?1:0;const dist=edt(m,w,h),lim=op.band*sc;for(let k=0;k<N;k++)if(m[k]&&dist[k]<lim)lab[k]=op.layer}
+    else for(let k=0;k<N;k++)if(d[k*4+3]>=128)lab[k]=op.layer}
+  return {w,h,lab}}
+function renderSpriteMotif(m,P,W,tiles,T,cv){const lab=new Uint8Array(W*W),ops=m.unit(P),B=m.bounds,cache=new Map();
+  const pl=m.place(P);
+  for(let j=-1;j<=tiles;j++)for(const q of pl)for(let i=-1;i<=tiles;i++){
+    const sc=q.s*T,key=sc.toFixed(3);let sp=cache.get(key);if(!sp){sp=renderSprite(ops,B,sc,cv);cache.set(key,sp)}
+    const cx=(i+q.x)*T,cy=(j+q.y)*T,oy=Math.round(cy+B[1]*sc),ox=q.f===1?Math.round(cx+B[0]*sc):Math.round(cx-B[0]*sc)-1;
+    const ylim=q.clipY!=null?(j+q.clipY)*T:Infinity;
+    for(let sy=0;sy<sp.h;sy++){const Y=oy+sy;if(Y<0||Y>=W||Y>=ylim)continue;const row=sy*sp.w;
+      for(let sx=0;sx<sp.w;sx++){const v=sp.lab[row+sx];if(v===255)continue;const X=q.f===1?ox+sx:ox-sx;if(X<0||X>=W)continue;lab[Y*W+X]=v}}}
+  return lab}
+
+/* ===== 渲染：每个构件层画成蒙版，按绘制顺序覆盖，得到每像素的层编号 ===== */
+function renderLabels(motif, P, W, ctx){ // ctx: {tiles, seed, density, canvas}
+  const N=W*W, lab=new Uint8Array(N);
+  const tiles=motif.tiled?ctx.tiles:1, T=W/tiles;
+  if(motif.sprite)return renderSpriteMotif(motif,P,W,tiles,T,ctx.canvas);
+  if(motif.analytic){for(let y=0;y<W;y++)for(let x=0;x<W;x++){lab[y*W+x]=motif.label((x+.5)/T,(y+.5)/T,P)}return lab}
+  const cv=ctx.canvas; if(cv.width!==W){cv.width=W;cv.height=W}
+  const g=cv.getContext("2d",{willReadFrequently:true});
+  const offs=[];if(motif.tiled){for(let j=-1;j<=tiles;j++)for(let i=-1;i<=tiles;i++)offs.push([i,j])}else offs.push([0,0]);
+  for(const op of motif.ops(P,ctx)){
+    g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,W,W);g.fillStyle=g.strokeStyle="#fff";g.lineCap="round";g.lineJoin="round";
+    for(const [i,j] of offs){
+      if(motif.tiled&&(i<-1||j<-1))continue;
+      g.setTransform(T,0,0,T,i*T,j*T);
+      if(op.clip){g.save();g.beginPath();op.clip(g);g.clip();const px=fillProxy(g);op.build(px);px.end();g.restore();continue}
+      if(op.clipRect){const c=op.clipRect;g.save();g.beginPath();g.rect(c[0],c[1],c[2]-c[0],c[3]-c[1]);g.clip()}
+      if(op.fill||op.band){const px=fillProxy(g);op.build(px);px.end()}
+      else {g.beginPath();op.build(g);g.lineWidth=op.stroke;g.stroke()}
+      if(op.clipRect)g.restore()
+    }
+    const d=g.getImageData(0,0,W,W).data;
+    if(op.band){let m=new Uint8Array(N);for(let k=0;k<N;k++)m[k]=d[k*4+3]>=128?1:0;let keep=null;
+      if(op.clipRect){keep=m;const full=renderMask({...op,clipRect:null},offs,g,W,T);m=full}
+      const dist=edt(m,W),lim=op.band*T;
+      for(let k=0;k<N;k++)if(m[k]&&dist[k]<lim&&(!keep||keep[k]))lab[k]=op.layer}
+    else for(let k=0;k<N;k++)if(d[k*4+3]>=128)lab[k]=op.layer;
+  }
+  return lab;
+}
+function layerAreas(motif,P,W,ctx){const lab=renderLabels(motif,P,W,{...ctx,tiles:motif.tiled?1:ctx.tiles});const a=new Array(motif.layers.length).fill(0);for(const v of lab)a[v]++;return a.map(v=>v/lab.length)}
+
+/* ===== 构件层 → 配色：按色彩角色（底/主/辅/勾线/点缀）对应构件，兼顾面积 ===== */
+function patternRoles(colors){
+  const cs=colors.map(c=>({...c}));if(cs.some(c=>c.role==="底色"))return cs;
+  const by=[...cs].sort((a,b)=>b.ratio-a.ratio);by[0].role="底色";const rest=by.slice(1);
+  if(rest.length>=3){let dk=rest[0];for(const c of rest)if(rgbLab(...hexRgb(c.hex))[0]<rgbLab(...hexRgb(dk.hex))[0])dk=c;dk.role="勾线"}
+  let i=0;for(const c of rest){if(c.role==="勾线")continue;c.role=i===0?"主色":i===1?"辅色":"点缀";i++}return cs}
+function mapLayers(layers,colors,areas,distinct,fixKey){const L=layers.length,k=colors.length;if(k>L)return null;let best=null,bc=Infinity;const asg=new Array(L).fill(0);
+  const fixed=new Array(L).fill(-1);if(fixKey)colors.forEach((c,i)=>{if(c.fix&&c.fix[fixKey]!=null)fixed[c.fix[fixKey]]=i});
+  const rec=l=>{if(l===L){if(distinct)for(const [x,y] of distinct)if(asg[x]===asg[y])return;const used=new Array(k).fill(0),ar=new Array(k).fill(0);let cost=0;
+      for(let i=0;i<L;i++){const c=asg[i];used[c]=1;ar[c]+=areas[i];const pi=layers[i].pref.indexOf(colors[c].role);cost+=pi<0?3:pi*.5}
+      if(used.includes(0))return;for(let c=0;c<k;c++)cost+=6*Math.abs(ar[c]-colors[c].ratio/100);if(cost<bc){bc=cost;best=asg.slice()}return}
+    if(fixed[l]>=0){asg[l]=fixed[l];rec(l+1);return}for(let c=0;c<k;c++){asg[l]=c;rec(l+1)}};rec(0);return best}
+function calibrate(m,P0,colors,map,res,cx){const keys=Object.keys(m.params),k=colors.length;
+  const err=P=>{const a=layerAreas(m,P,res,cx),ca=new Array(k).fill(0);a.forEach((v,i)=>ca[map[i]]+=v);return ca.reduce((s,v,c)=>s+Math.abs(v-colors[c].ratio/100),0)};
+  let P={...P0},e=err(P);const step={};for(const n of keys)step[n]=(m.params[n][1]-m.params[n][0])/4;
+  for(let it=0;it<60&&e>.002;it++){let imp=false;
+    for(const n of keys){for(const dir of [1,-1]){const Q={...P};Q[n]=Math.max(m.params[n][0],Math.min(m.params[n][1],P[n]+dir*step[n]));if(Q[n]===P[n])continue;const eq=err(Q);if(eq<e-1e-5){P=Q;e=eq;imp=true;break}}}
+    if(!imp){let small=true;for(const n of keys){step[n]/=2;if(step[n]>(m.params[n][1]-m.params[n][0])/80)small=false}if(small)break}}
+  return P}
+
+/* ============ 状态 ============ */
+const S = {palette:PRESETS[4], target:"pattern", pattern:"baoxiang", density:2, calib:true, exact:true, seed:7, mode:"strict", invert:false, texture:0,
+  uploadImg:null, refImg:null, custom:[], extracted:null, last:null};
+const $ = id => { for (const r of HS_ROOTS) { const e = r.getElementById(id); if (e) return e } return null };
+const QA = sel => HS_ROOTS.flatMap(r => [...r.querySelectorAll(sel)]);
+let T = null; // 目标数据
+
+const scratch=document.createElement("canvas");
+let PCACHE={key:null};const FIT=new Map();
+function fitPattern(pk,colors){const m=MOTIFS[pk];const cx={tiles:S.density,seed:S.seed,density:S.density,canvas:scratch};
+  const key=[pk,S.calib,S.seed,m.tiled?0:S.density,colors.map(c=>c.hex+c.ratio+c.role).join()].join("|");
+  if(FIT.has(key))return FIT.get(key);
+  const def={};for(const n in m.params)def[n]=m.params[n][2];const res=m.sprite?256:m.tiled?160:360;
+  const A0=layerAreas(m,def,res,cx);let map=mapLayers(m.layers,colors,A0,m.distinct,m.fixKey)||mapLayers(m.layers,colors,A0,null,m.fixKey)||mapLayers(m.layers,colors,A0),P=def;
+  if(S.calib){P=calibrate(m,def,colors,map,res,cx);const A1=layerAreas(m,P,res,cx);const map2=mapLayers(m.layers,colors,A1,m.distinct,m.fixKey)||mapLayers(m.layers,colors,A1,null,m.fixKey)||map;if(map2.join()!==map.join()){map=map2;P=calibrate(m,P,colors,map,res,cx)}}
+  const a=layerAreas(m,P,res,cx),ca=new Array(colors.length).fill(0);a.forEach((v,i)=>ca[map[i]]+=v);
+  const before=Math.max(...ca.map((v,c)=>Math.abs(v*100-colors[c].ratio)));const r={key,map,P,before};FIT.set(key,r);return r}
+let scanTimer=null;
+function scanFits(){clearTimeout(scanTimer);if(S.target!=="pattern")return;const pk=S.pattern,m=MOTIFS[pk];let i=0;
+  const step=()=>{if(S.target!=="pattern"||S.pattern!==pk||sHost.hidden)return;
+    while(i<PRESETS.length){const p=PRESETS[i++];const colors=patternRoles(p.colors);if(colors.length>m.layers.length){setBadge(i-1,null);continue}
+      const r=fitPattern(pk,colors);setBadge(i-1,r.before);scanTimer=setTimeout(step,40);return}};
+  scanTimer=setTimeout(step,300)}
+function setBadge(i,v){const el=QA(`.pal[data-i="${i}"] .fit`)[0];if(!el)return;
+  if(v==null){el.textContent="色数超出";el.className="fit fit-bad";return}
+  const lim=MOTIFS[S.pattern].trim||8;el.textContent=v<=Math.min(2,lim/2)?`贴合 · 修边 ${v.toFixed(1)}%`:v<=lim?`微调 · 修边 ${v.toFixed(1)}%`:`不适配 · 差 ${v.toFixed(0)}%`;el.className="fit "+(v<=Math.min(2,lim/2)?"fit-ok":v<=lim?"fit-mid":"fit-bad")}
+function patternColoring(W){
+  const m=MOTIFS[S.pattern],colors=patternRoles(S.palette.colors),k=colors.length;
+  if(k>m.layers.length)return {error:`${m.name}共有 ${m.layers.length} 个构件层，当前配色有 ${k} 色。请减到 ${m.layers.length} 色以内，或改用「我的图像」。`};
+  const cx={tiles:S.density,seed:S.seed,density:S.density,canvas:scratch};
+  const fit=fitPattern(S.pattern,colors);PCACHE=fit;
+  const lab=renderLabels(m,PCACHE.P,W,cx);
+  const cols=colors.map((c,i)=>{const rgb=hexRgb(c.hex);return {...c,rgb,lab:rgbLab(...rgb),parts:m.layers.filter((_,l)=>PCACHE.map[l]===i).map(x=>x.name)}});
+  const N=W*W,ci=new Uint8Array(N),cnt=new Array(k).fill(0);
+  for(let i=0;i<N;i++){const c=PCACHE.map[lab[i]];ci[i]=c;cnt[c]++}
+  const before=Math.max(...cnt.map((v,c)=>Math.abs(v/N*100-colors[c].ratio)));let moved=0;
+  const LIMIT=MOTIFS[S.pattern].trim||8;let skipped=false;
+  if(S.exact){if(before<=LIMIT)moved=balance(ci,W,cnt,apportion(colors.map(c=>c.ratio),N));else skipped=true}
+  const img=new ImageData(W,W),d=img.data;
+  for(let i=0;i<N;i++){const rgb=cols[ci[i]].rgb;d[i*4]=rgb[0];d[i*4+1]=rgb[1];d[i*4+2]=rgb[2];d[i*4+3]=255}
+  return {img,cols,cnt,n:N,before,moved:moved/N*100,skipped}}
+/* 精确修边：缺量的颜色沿自身边界等距外扩，只取离它最近的若干像素（从富余色中取），直到每色像素数与规范比例完全一致 */
+function balance(ci,W,cnt,target){const N=W*W,k=cnt.length;let moved=0;
+  for(let guard=0;guard<k*k*2;guard++){
+    let B=-1,def=0;for(let c=0;c<k;c++){const dd=target[c]-cnt[c];if(dd>def){def=dd;B=c}}if(B<0)break;
+    const m=new Uint8Array(N);for(let i=0;i<N;i++)m[i]=ci[i]!==B?1:0;const dist=edt(m,W);
+    let best=-1,bestScore=Infinity,bestTake=0;
+    for(let A=0;A<k;A++){const sur=cnt[A]-target[A];if(A===B||sur<=0)continue;const take=Math.min(def,sur);
+      const h=new Uint32Array(4096);for(let i=0;i<N;i++)if(ci[i]===A)h[Math.min(4095,dist[i]|0)]++;
+      let acc=0,sum=0;for(let b=0;b<4096&&acc<take;b++){const t=Math.min(h[b],take-acc);acc+=t;sum+=t*b}const score=sum/take;
+      if(score<bestScore){bestScore=score;best=A;bestTake=take}}
+    if(best<0)break;
+    const idx=[];let lim=0;{const h=new Uint32Array(4096);for(let i=0;i<N;i++)if(ci[i]===best)h[Math.min(4095,dist[i]|0)]++;let acc=0;for(lim=0;lim<4096;lim++){acc+=h[lim];if(acc>=bestTake)break}}
+    for(let i=0;i<N;i++)if(ci[i]===best&&dist[i]<lim+1)idx.push(i);
+    idx.sort((a,b)=>(dist[a]-dist[b])||(a-b));
+    for(let j=0;j<bestTake;j++){ci[idx[j]]=B}cnt[B]+=bestTake;cnt[best]-=bestTake;moved+=bestTake}
+  return moved}
+function buildImageTarget(img){
+  const maxSide=1200,sc=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+  const w=Math.max(1,Math.round(img.naturalWidth*sc)),h=Math.max(1,Math.round(img.naturalHeight*sc));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const cx=c.getContext("2d");cx.drawImage(img,0,0,w,h);
+  const d=cx.getImageData(0,0,w,h).data,N=w*h;const L=new Float32Array(N),mask=new Uint8Array(N),lab=new Float32Array(N*3);let n=0;
+  for(let i=0;i<N;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2];const q=rgbLab(r,g,b);lab[i*3]=q[0];lab[i*3+1]=q[1];lab[i*3+2]=q[2];L[i]=q[0];if(d[i*4+3]>=128){mask[i]=1;n++}}
+  // 多尺度模糊作为同明度像素的次序依据：平涂色块会从边缘向内成层，而不是横向切开
+  const I=new Float64Array((w+1)*(h+1));for(let y=0;y<h;y++){let row=0;for(let x=0;x<w;x++){row+=L[y*w+x];I[(y+1)*(w+1)+x+1]=I[y*(w+1)+x+1]+row}}
+  const box=(x,y,r)=>{const x0=Math.max(0,x-r),y0=Math.max(0,y-r),x1=Math.min(w,x+r+1),y1=Math.min(h,y+r+1);return (I[y1*(w+1)+x1]-I[y0*(w+1)+x1]-I[y1*(w+1)+x0]+I[y0*(w+1)+x0])/((x1-x0)*(y1-y0))};
+  const rs=[Math.max(2,Math.round(w/80)),Math.max(4,Math.round(w/24)),Math.max(8,Math.round(w/8))];const key2=new Float32Array(N);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){key2[y*w+x]=box(x,y,rs[0])+box(x,y,rs[1])+box(x,y,rs[2])}
+  T={w,h,N,L,key2,mask,n,orig:new Uint8ClampedArray(d),lab,kind:"image"};
+}
+
+/* ============ 映射 ============ */
+function assignStrict(cols){
+  const {N,L,key2,mask,n}=T,k=cols.length;const counts=apportion(cols.map(c=>c.ratio),n);
+  const cumEnd=[];let acc=0;for(const c of counts){acc+=c;cumEnd.push(acc)}
+  let mn=1e9,mx=-1e9;for(let i=0;i<N;i++)if(mask[i]){const v=L[i];if(v<mn)mn=v;if(v>mx)mx=v}
+  const B=65536,bins=new Uint32Array(B),q=new Uint16Array(N),span=(mx-mn)||1;
+  for(let i=0;i<N;i++)if(mask[i]){const b=Math.min(B-1,((L[i]-mn)/span*(B-1))|0);q[i]=b;bins[b]++}
+  const start=new Uint32Array(B);acc=0;for(let b=0;b<B;b++){start[b]=acc;acc+=bins[b]}
+  const boundary=new Uint8Array(B);
+  for(let c=0;c<k-1;c++){const e=cumEnd[c];let lo=0,hi=B-1;while(lo<hi){const m=(lo+hi+1)>>1;if(start[m]<=e)lo=m;else hi=m-1}
+    let b=lo;while(b>0&&bins[b]===0)b--;if(start[b]<e&&e<start[b]+bins[b])boundary[b]=1}
+  const idx=new Uint8Array(N).fill(255),lists=new Map();
+  for(let i=0;i<N;i++){if(!mask[i])continue;const b=q[i];if(boundary[b]){let l=lists.get(b);if(!l){l=[];lists.set(b,l)}l.push(i);continue}
+    const r=start[b];let c=0;while(r>=cumEnd[c])c++;idx[i]=c}
+  for(const [b,l] of lists){l.sort((u,v)=>(key2[u]-key2[v])||(u-v));for(let j=0;j<l.length;j++){const r=start[b]+j;let c=0;while(r>=cumEnd[c])c++;idx[l[j]]=c}}
+  return idx;
+}
+function kmeans(data,m,k,iters,seed){
+  const rnd=mulberry32(seed),C=new Float32Array(k*3);const first=Math.floor(rnd()*m);C.set(data.subarray(first*3,first*3+3),0);
+  const D=new Float32Array(m).fill(1e18);
+  for(let c=1;c<k;c++){let sum=0;for(let i=0;i<m;i++){const dx=data[i*3]-C[(c-1)*3],dy=data[i*3+1]-C[(c-1)*3+1],dz=data[i*3+2]-C[(c-1)*3+2];const d=dx*dx+dy*dy+dz*dz;if(d<D[i])D[i]=d;sum+=D[i]}
+    let t=rnd()*sum,i=0;for(;i<m-1;i++){t-=D[i];if(t<=0)break}C.set(data.subarray(i*3,i*3+3),c*3)}
+  const lab=new Uint8Array(m);
+  for(let it=0;it<iters;it++){const acc=new Float64Array(k*4);
+    for(let i=0;i<m;i++){let bc=0,bd=1e18;for(let c=0;c<k;c++){const dx=data[i*3]-C[c*3],dy=data[i*3+1]-C[c*3+1],dz=data[i*3+2]-C[c*3+2];const d=dx*dx+dy*dy+dz*dz;if(d<bd){bd=d;bc=c}}
+      lab[i]=bc;acc[bc*4]+=data[i*3];acc[bc*4+1]+=data[i*3+1];acc[bc*4+2]+=data[i*3+2];acc[bc*4+3]++}
+    for(let c=0;c<k;c++)if(acc[c*4+3]>0){C[c*3]=acc[c*4]/acc[c*4+3];C[c*3+1]=acc[c*4+1]/acc[c*4+3];C[c*3+2]=acc[c*4+2]/acc[c*4+3]}}
+  const cnt=new Array(k).fill(0);for(let i=0;i<m;i++)cnt[lab[i]]++;return {C,cnt}
+}
+function sampleLab(lab,mask,N,max){const idx=[];for(let i=0;i<N;i++)if(mask[i])idx.push(i);const step=Math.max(1,Math.floor(idx.length/max));const m=Math.ceil(idx.length/step);
+  const out=new Float32Array(m*3);let j=0;for(let t=0;t<idx.length&&j<m;t+=step,j++){const i=idx[t];out[j*3]=lab[i*3];out[j*3+1]=lab[i*3+1];out[j*3+2]=lab[i*3+2]}return {data:out,m:j}}
+function permutations(n){const res=[],a=[...Array(n).keys()];const c=new Array(n).fill(0);res.push(a.slice());let i=0;
+  while(i<n){if(c[i]<i){const s=i%2?c[i]:0;[a[s],a[i]]=[a[i],a[s]];res.push(a.slice());c[i]++;i=0}else{c[i]=0;i++}}return res}
+function assignRegion(cols){
+  const {N,mask,n}=T,k=cols.length;
+  if(!T.lab){T.lab=new Float32Array(N*3);for(let i=0;i<N;i++)T.lab[i*3]=T.L[i]}
+  const {data,m}=sampleLab(T.lab,mask,N,30000);const {C}=kmeans(data,m,k,10,7);
+  const lab=new Uint8Array(N),share=new Array(k).fill(0);
+  for(let i=0;i<N;i++){if(!mask[i])continue;let bc=0,bd=1e18;for(let c=0;c<k;c++){const dx=T.lab[i*3]-C[c*3],dy=T.lab[i*3+1]-C[c*3+1],dz=T.lab[i*3+2]-C[c*3+2];const d=dx*dx+dy*dy+dz*dz;if(d<bd){bd=d;bc=c}}lab[i]=bc;share[bc]++}
+  const sh=share.map(v=>v/n*100);
+  const rankC=[...Array(k).keys()].sort((a,b)=>C[a*3]-C[b*3]);const rC=new Array(k);rankC.forEach((c,r)=>rC[c]=r); // 簇的明度序
+  // cols 已按明度排好（含反转），其下标即明度序
+  let best=null,bc=1e18;for(const p of permutations(k)){let cost=0;for(let j=0;j<k;j++){cost+=Math.abs(sh[j]-cols[p[j]].ratio)+0.6*Math.abs(rC[j]-p[j])*100/k/k}if(cost<bc){bc=cost;best=p}}
+  const idx=new Uint8Array(N).fill(255);for(let i=0;i<N;i++)if(mask[i])idx[i]=best[lab[i]];return idx;
+}
+
+/* ============ 渲染 ============ */
+const out=$("out"),ctx=out.getContext("2d");
+let comparing=false;
+function orderedCols(){
+  const cols=S.palette.colors.map(c=>{const rgb=hexRgb(c.hex);return {...c,rgb,lab:rgbLab(...rgb)}});
+  const ord=cols.slice().sort((a,b)=>a.lab[0]-b.lab[0]);if(S.invert)ord.reverse();return ord;
+}
+function recolor(){
+  if(S.target==="pattern"){$("busy").hidden=false;setTimeout(()=>{const W=1024,r=patternColoring(W);$("busy").hidden=true;
+    if(r.error){S.last=null;ctx.clearRect(0,0,out.width,out.height);$("status").className="status s-bad";$("status").textContent="颜色数超出构件层";$("tbody").innerHTML=`<tr><td colspan="8">${r.error}</td></tr>`;$("barSpec").innerHTML=$("barReal").innerHTML="";return}
+    T={w:W,h:W,N:W*W,n:W*W,mask:new Uint8Array(W*W).fill(1),kind:"pattern"};out.width=W;out.height=W;ctx.putImageData(r.img,0,0);S.last=r;renderVerify();
+    $("fitNote").textContent=r.skipped?`此配色的比例与「${MOTIFS[S.pattern].name}」的构件面积差距过大（需修边 ${r.before.toFixed(1)}%），为保形制未强行修边。请选左侧标为「贴合」或「微调」的配色。`:S.exact?`形制校准后最大偏差 ${r.before.toFixed(1)}%，修边调整了 ${r.moved.toFixed(2)}% 的像素。`:`当前最大偏差 ${r.before.toFixed(1)}%。`;
+    if(r.skipped){$("status").className="status s-bad";$("status").textContent="配色与纹样形制不匹配"}},30);return}
+  if(!T)return;$("busy").hidden=false;
+  requestAnimationFrame(()=>setTimeout(()=>{
+    const cols=orderedCols(),k=cols.length;
+    const idx=S.mode==="strict"?assignStrict(cols):assignRegion(cols);
+    const {N,w,h,L}=T,cnt=new Array(k).fill(0),sumL=new Array(k).fill(0);
+    for(let i=0;i<N;i++){const c=idx[i];if(c===255)continue;cnt[c]++;sumL[c]+=L[i]}
+    const mean=sumL.map((s,c)=>cnt[c]?s/cnt[c]:0),amt=S.texture/100*0.6;
+    const img=ctx.createImageData(w,h),d=img.data;
+    for(let i=0;i<N;i++){const c=idx[i];if(c===255){d[i*4+3]=0;continue}
+      let rgb=cols[c].rgb;if(amt>0){const lab=cols[c].lab;rgb=labRgb(Math.max(0,Math.min(100,lab[0]+(L[i]-mean[c])*amt)),lab[1],lab[2])}
+      d[i*4]=rgb[0];d[i*4+1]=rgb[1];d[i*4+2]=rgb[2];d[i*4+3]=255}
+    out.width=w;out.height=h;ctx.putImageData(img,0,0);
+    S.last={img,cols,cnt,n:T.n};
+    renderVerify();$("busy").hidden=true;
+  },0));
+}
+function showOriginal(on){if(!T||!S.last)return;comparing=on;if(on){ctx.putImageData(new ImageData(T.orig,T.w,T.h),0,0)}else ctx.putImageData(S.last.img,0,0)}
+
+function renderVerify(){
+  const {cols,cnt,n}=S.last;const byName=S.palette.colors;
+  // 表格按规范比例从大到小
+  const rows=cols.map((c,i)=>({...c,real:cnt[i]/n*100})).sort((a,b)=>b.ratio-a.ratio);
+  $("barSpec").innerHTML=rows.map(r=>`<i style="width:${r.ratio}%;background:${r.hex}" title="${r.name} ${r.ratio}%"></i>`).join("");
+  $("barReal").innerHTML=rows.map(r=>`<i style="width:${r.real}%;background:${r.hex}" title="${r.name} ${r.real.toFixed(2)}%"></i>`).join("");
+  let maxDev=0;
+  $("tbody").innerHTML=rows.map(r=>{const dev=r.real-r.ratio;maxDev=Math.max(maxDev,Math.abs(dev));const cls=Math.abs(dev)<0.05?"dev-0":Math.abs(dev)<3?"dev-1":"dev-2";
+    return `<tr><td><span class="dot" style="background:${r.hex}"></span></td><td class="name"><b>${r.name}</b><small>${r.role||""}</small></td>
+      <td><button class="hex" data-copy="${r.hex.toUpperCase()}" title="复制">${r.hex.toUpperCase()}</button></td><td class="num">${r.rgb.join(", ")}</td>
+      <td class="num">${r.ratio}%</td><td class="num">${r.real.toFixed(2)}%</td><td class="num ${cls}">${Math.abs(dev)<0.005?"0.00":(dev>0?"+":"")+dev.toFixed(2)}</td><td class="parts">${r.parts?r.parts.join("、"):"—"}</td></tr>`}).join("");
+  const st=$("status");
+  if(S.target==="pattern"){st.className="status "+(maxDev<=0.5?"s-ok":maxDev<3?"s-warn":"s-bad");st.textContent=maxDev<0.005?"色值与配比逐像素一致":maxDev<=0.5?`色值严格一致 · 配比误差 ≤${maxDev.toFixed(2)}%`:`色值严格一致 · 最大配比偏差 ${maxDev.toFixed(1)}%`}
+  else if(maxDev<0.05&&S.texture===0){st.className="status s-ok";st.textContent="色值与配比严格一致"}
+  else if(maxDev<0.05){st.className="status s-warn";st.textContent="配比一致 · 肌理致色值浮动"}
+  else{st.className="status "+(maxDev<3?"s-warn":"s-bad");st.textContent=`最大偏差 ${maxDev.toFixed(1)}%`}
+  $("verifyTitle").textContent="配比核对 · "+S.palette.name;
+  $("targetInfo").textContent=T.kind==="pattern"?`${MOTIFS[S.pattern].name} · 按构件着色${S.calib?" · 已按配比校准":""}`:`上传图像 · ${T.w}×${T.h}px${T.n<T.N?" · 透明区不计入":""}`;
+}
+
+/* ============ UI：传统配色 ============ */
+const barHtml=cols=>`<div class="bar">${cols.map(c=>`<i style="width:${c.ratio}%;background:${c.hex}"></i>`).join("")}</div>`;
+function renderPresets(){
+  $("palList").innerHTML=PRESETS.map((p,i)=>`<button class="pal" data-i="${i}" aria-pressed="${S.palette===p}">
+    <div class="pal-name"><b>${p.name}</b><span>${p.note}</span></div>${barHtml(p.colors)}
+    <div class="pal-chips">${p.colors.map(c=>`<span>${c.name} <em>${c.ratio}%</em></span>`).join("")}</div><span class="fit" ${S.target==="pattern"?"":"hidden"}></span></button>`).join("");
+  if(S.target==="pattern")scanFits();
+}
+$("palList").addEventListener("click",e=>{const b=e.target.closest(".pal");if(!b)return;S.palette=PRESETS[+b.dataset.i];renderPresets();recolor()});
+
+/* ============ UI：色卡自配 ============ */
+function renderLib(){
+  $("lib").innerHTML=Object.entries(LIB).map(([g,list])=>`<div class="lib-group"><h3>${g}</h3><div class="swatches">${
+    list.map(([n,h])=>`<button class="sw" style="background:${h}" data-n="${n}" data-h="${h}" title="${n} ${h.toUpperCase()}" aria-label="${n} ${h}"></button>`).join("")}</div></div>`).join("");
+}
+$("lib").addEventListener("mouseover",e=>{const b=e.target.closest(".sw");if(b){const rgb=hexRgb(b.dataset.h);$("libTip").textContent=`${b.dataset.n}  ${b.dataset.h.toUpperCase()}  RGB ${rgb.join(",")}`}});
+$("lib").addEventListener("click",e=>{const b=e.target.closest(".sw");if(!b)return;
+  if(S.custom.some(c=>c.hex===b.dataset.h)){toast("已在自定义配色中");return}
+  if(S.custom.length>=8){toast("最多 8 色");return}
+  S.custom.push({name:b.dataset.n,hex:b.dataset.h,ratio:0,role:""});renderCustom()});
+function renderCustom(){
+  $("customList").innerHTML=S.custom.length?S.custom.map((c,i)=>`<div class="custom-row"><span class="dot" style="background:${c.hex}"></span>
+    <span class="nm">${c.name}<small>${c.hex.toUpperCase()}</small></span>
+    <input type="number" min="1" max="100" step="1" value="${c.ratio}" data-i="${i}" id="cr-${i}" aria-label="${c.name} 比例">
+    <button class="x" data-del="${i}" aria-label="移除 ${c.name}">×</button></div>`).join("")
+    :`<p class="hint">从上方色卡点选 2–8 个颜色，再填写比例（整数，合计必须为 100）。</p>`;
+  updateSum();
+}
+function updateSum(){const s=S.custom.reduce((a,c)=>a+(+c.ratio||0),0);const ok=s===100&&S.custom.length>=2&&S.custom.every(c=>Number.isInteger(+c.ratio)&&+c.ratio>=1);
+  $("customSum").innerHTML=`<span class="${ok?"good":"badc"}">${s}%${s!==100?(s<100?` · 还差 ${100-s}`:` · 超出 ${s-100}`):""}</span>`;$("btnApplyCustom").disabled=!ok}
+$("customList").addEventListener("input",e=>{const i=e.target.dataset.i;if(i==null)return;S.custom[+i].ratio=Math.round(+e.target.value||0);updateSum()});
+$("customList").addEventListener("click",e=>{const d=e.target.dataset.del;if(d==null)return;S.custom.splice(+d,1);renderCustom()});
+$("btnEven").onclick=()=>{if(!S.custom.length)return;const r=apportion(S.custom.map(()=>1),100);S.custom.forEach((c,i)=>c.ratio=r[i]);renderCustom()};
+$("btnFromCur").onclick=()=>{S.custom=S.palette.colors.map(c=>({...c}));renderCustom()};
+$("btnApplyCustom").onclick=()=>{S.palette={name:"自定义配色",note:"",colors:S.custom.map(c=>({...c,ratio:+c.ratio,role:c.role||""}))};renderPresets();recolor();toast("已应用自定义配色")};
+
+/* ============ UI：图像取色 ============ */
+function loadImageFile(file,cb){if(!file||!file.type.startsWith("image/")){toast("请选择图像文件");return}
+  const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>cb(img,url);img.onerror=()=>toast("图像无法读取，请换一张试试");img.src=url}
+function setRef(file){loadImageFile(file,(img,url)=>{S.refImg=img;$("refThumb").src=url;$("refThumb").hidden=false;$("btnExtract").disabled=false;extractFrom("ref")})}
+$("refFile").onchange=e=>setRef(e.target.files[0]);
+const rd=$("refDrop");["dragenter","dragover"].forEach(t=>rd.addEventListener(t,e=>{e.preventDefault();rd.classList.add("over")}));
+["dragleave","drop"].forEach(t=>rd.addEventListener(t,e=>{e.preventDefault();rd.classList.remove("over")}));
+rd.addEventListener("drop",e=>setRef(e.dataTransfer.files[0]));
+$("kSlider").oninput=e=>{$("kOut").textContent=e.target.value};
+$("btnExtract").onclick=()=>extractFrom("ref");
+$("btnExtractTarget").onclick=()=>extractFrom("target");
+$("snap").onchange=()=>{if(S.extracted)extractFrom(S.extracted.from)};
+function extractFrom(from){
+  let lab,mask,N;
+  if(from==="ref"){if(!S.refImg)return;const img=S.refImg,sc=Math.min(1,400/Math.max(img.naturalWidth,img.naturalHeight));
+    const w=Math.max(1,Math.round(img.naturalWidth*sc)),h=Math.max(1,Math.round(img.naturalHeight*sc));const c=document.createElement("canvas");c.width=w;c.height=h;
+    const cx=c.getContext("2d");cx.drawImage(img,0,0,w,h);const d=cx.getImageData(0,0,w,h).data;N=w*h;lab=new Float32Array(N*3);mask=new Uint8Array(N);
+    for(let i=0;i<N;i++){const q=rgbLab(d[i*4],d[i*4+1],d[i*4+2]);lab.set(q,i*3);mask[i]=d[i*4+3]>=128?1:0}}
+  else{if(!T)return;N=T.N;mask=T.mask;if(T.kind==="image")lab=T.lab;else{ // 内置纹样：取当前结果画面
+      const d=S.last.img.data;lab=new Float32Array(N*3);for(let i=0;i<N;i++)lab.set(rgbLab(d[i*4],d[i*4+1],d[i*4+2]),i*3)}}
+  const k=+$("kSlider").value;const {data,m}=sampleLab(lab,mask,N,40000);if(m<k){toast("可用像素太少");return}
+  const {C,cnt}=kmeans(data,m,k,14,11);const snap=$("snap").checked;
+  let items=[];for(let c=0;c<k;c++){if(!cnt[c])continue;const L=[C[c*3],C[c*3+1],C[c*3+2]];const nn=nearestLib(L);
+    if(snap)items.push({name:nn.c.name,hex:nn.c.hex,w:cnt[c],dE:nn.d,raw:rgbHex(...labRgb(...L))});
+    else{const hex=rgbHex(...labRgb(...L));items.push({name:"近 "+nn.c.name,hex,w:cnt[c],dE:nn.d,raw:hex})}}
+  if(snap){const mg=new Map();for(const it of items){const e=mg.get(it.hex);if(e){e.w+=it.w;e.dE=Math.max(e.dE,it.dE)}else mg.set(it.hex,{...it})}items=[...mg.values()]}
+  items.sort((a,b)=>b.w-a.w);const r=apportion(items.map(i=>i.w),100);
+  // 保证每色至少 1%
+  for(let i=0;i<r.length;i++)if(r[i]<1){const j=r.indexOf(Math.max(...r));r[j]--;r[i]=1}
+  const roles=["主色","辅色","辅色","点缀","点缀","点缀","点缀","点缀"];
+  S.extracted={from,colors:items.map((it,i)=>({name:it.name,hex:it.hex,ratio:r[i],role:i===0?"主色":roles[i]||"点缀",dE:it.dE,raw:it.raw}))};
+  renderExtract();
+}
+function renderExtract(){const ex=S.extracted;if(!ex){$("extResult").innerHTML=`<p class="hint">上传参考图后，按面积占比提取主色；勾选吸附时，每个颜色替换为色库中最接近的传统色，比例按实际面积四舍五入到整数。</p>`;return}
+  $("extResult").innerHTML=`<p class="label">提取结果 · ${ex.from==="ref"?"参考图":"当前画面"}</p>${barHtml(ex.colors)}
+  <div style="margin:8px 0">${ex.colors.map(c=>`<div class="custom-row" style="grid-template-columns:22px minmax(0,1fr) auto"><span class="dot" style="background:${c.hex}"></span>
+    <span class="nm">${c.name}<small>${c.hex.toUpperCase()}${$("snap").checked?` · 原色 ${c.raw.toUpperCase()} · ΔE ${c.dE.toFixed(1)}`:""}</small></span><b style="font-family:var(--f-mono);font-size:12px">${c.ratio}%</b></div>`).join("")}</div>
+  <div class="btn-row"><button class="btn primary" id="btnUseExt">应用此配色</button><button class="btn" id="btnEditExt">转入自配编辑</button></div>`;
+  $("btnUseExt").onclick=()=>{S.palette={name:"图像取色",note:"",colors:ex.colors.map(c=>({name:c.name,hex:c.hex,ratio:c.ratio,role:c.role}))};renderPresets();recolor();toast("已应用取色配色")};
+  $("btnEditExt").onclick=()=>{S.custom=ex.colors.map(c=>({name:c.name,hex:c.hex,ratio:c.ratio,role:c.role})).slice(0,8);renderCustom();selectTab("lib")};
+}
+
+/* ============ UI：目标 ============ */
+function renderPatterns(){$("patRow").innerHTML=Object.entries(MOTIFS).map(([k,p])=>`<button class="chip" data-p="${k}" aria-pressed="${S.target==="pattern"&&S.pattern===k}">${p.name}</button>`).join("")}
+$("patRow").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;S.pattern=b.dataset.p;S.density=MOTIFS[S.pattern].dens||2;$("density").value=S.density;$("densOut").textContent=S.density;setTarget("pattern")});
+$("density").oninput=e=>{$("densOut").textContent=e.target.value};
+$("density").onchange=e=>{S.density=+e.target.value;if(S.target==="pattern"){recolor();if(!MOTIFS[S.pattern].tiled)renderPresets()}};
+function setTarget(t){
+  if(t==="upload"&&!S.uploadImg){$("tgtFile").click();return}
+  S.target=t;$("tgtPattern").setAttribute("aria-pressed",t==="pattern");$("tgtUpload").setAttribute("aria-pressed",t==="upload");
+  $("densRow").hidden=t!=="pattern";renderPatterns();syncPanels();
+  if(t!=="pattern")buildImageTarget(S.uploadImg);recolor();
+}
+$("tgtPattern").onclick=()=>setTarget("pattern");$("tgtUpload").onclick=()=>setTarget("upload");
+function setUpload(file){loadImageFile(file,img=>{S.uploadImg=img;setTarget("upload")})}
+$("tgtFile").onchange=e=>setUpload(e.target.files[0]);
+const cw=$("canvasWrap");["dragenter","dragover"].forEach(t=>cw.addEventListener(t,e=>e.preventDefault()));
+cw.addEventListener("drop",e=>{e.preventDefault();setUpload(e.dataTransfer.files[0])});
+const cmp=$("btnCompare");
+cmp.addEventListener("pointerdown",()=>showOriginal(true));["pointerup","pointerleave","pointercancel"].forEach(t=>cmp.addEventListener(t,()=>comparing&&showOriginal(false)));
+cmp.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();showOriginal(true)}});
+cmp.addEventListener("keyup",()=>showOriginal(false));
+
+/* ============ UI：控制 ============ */
+const MODE_DESC={strict:"按明度把像素排序，再按规范比例逐像素切层。每个颜色的面积与规范比例精确到像素，适合纹样、照片与渐变图。",
+  region:"先把画面聚成与配色同数的色块，再按面积与明度把传统色分配给色块。形状完整保留，但面积由原图决定，与规范比例会有偏差。"};
+QA("[data-mode]").forEach(b=>b.onclick=()=>{S.mode=b.dataset.mode;QA("[data-mode]").forEach(x=>x.setAttribute("aria-pressed",x===b));$("modeDesc").textContent=MODE_DESC[S.mode];recolor()});
+$("invert").onchange=e=>{S.invert=e.target.checked;recolor()};
+$("texture").oninput=e=>{$("texOut").textContent=e.target.value};
+$("texture").onchange=e=>{S.texture=+e.target.value;$("texNote").textContent=S.texture===0?"0 = 纯色值输出，像素色值与色卡完全一致。":"保留原图明暗：面积配比不变，但像素色值会在标准色上下浮动。";recolor()};
+HS_ROOTS.forEach(r=>r.addEventListener("click",e=>{const b=e.target.closest("[data-copy]");if(b)copy(b.dataset.copy)}));
+
+function syncPanels(){const pat=S.target==="pattern";$("patGroup").hidden=!pat;QA(".img-only").forEach(el=>el.hidden=pat);
+  $("ctrlTitle").textContent=pat?"纹样":"映射";$("btnCompare").hidden=pat;$("partsTh").hidden=false;
+  const m=MOTIFS[S.pattern];$("patSpec").textContent=m.spec;$("btnReseed").hidden=!(pat&&m.reseed);renderPresets()}
+$("calib").onchange=e=>{S.calib=e.target.checked;recolor();renderPresets()};
+$("exact").onchange=e=>{S.exact=e.target.checked;recolor()};
+$("btnReseed").onclick=()=>{S.seed=(S.seed*7+13)%9973;recolor();renderPresets()};
+$("patRow").addEventListener("click",()=>syncPanels());
+
+/* ============ 导出 ============ */
+let DL=null;try{window.claude?.use?.("downloads").then(ns=>{DL=ns}).catch(()=>{})}catch(_){}
+function paletteJSON(){const {cols,cnt,n}=S.last;return JSON.stringify({palette:S.palette.name,source:"中国色 zhongguose.com（《色谱》）",mode:S.mode==="strict"?"严格配比":"保形色块",
+  colors:cols.map((c,i)=>({name:c.name,role:c.role||"",parts:c.parts||undefined,hex:c.hex.toUpperCase(),rgb:c.rgb,ratio:c.ratio,measured:+(cnt[i]/n*100).toFixed(3)})).sort((a,b)=>b.ratio-a.ratio)},null,2)}
+async function save(filename,data,fallback){
+  if(DL){try{await DL.save({filename,data});toast("已保存");return}catch(err){if(err&&err.code==="declined")return;if(err&&err.code==="rate_limited"){toast("请稍后再试");return}}}
+  fallback();
+}
+const safeName=()=>S.palette.name.replace(/[\\/:*?"<>|·\s]+/g,"-");
+$("btnPng").onclick=()=>{if(!S.last)return;let img=S.last.img;if(S.target==="pattern"){toast("正在生成 2048px…");img=patternColoring(2048).img}
+  const c=document.createElement("canvas");c.width=img.width;c.height=img.height;c.getContext("2d").putImageData(img,0,0);
+  c.toBlob(b=>save(`纹样换色-${safeName()}.png`,b,()=>{$("ovImg").src=c.toDataURL("image/png");$("overlay").hidden=false}),"image/png")};
+$("btnJson").onclick=()=>{if(!S.last)return;const j=paletteJSON();save(`配色-${safeName()}.json`,j,()=>copy(j,"JSON 已复制到剪贴板"))};
+$("btnCopy").onclick=()=>{if(!S.last)return;copy(S.palette.colors.slice().sort((a,b)=>b.ratio-a.ratio).map(c=>`${c.name}\t${c.hex.toUpperCase()}\t${c.ratio}%`).join("\n"),"色值已复制")};
+$("ovClose").onclick=()=>{$("overlay").hidden=true};
+function copy(text,msg){const done=()=>toast(msg||`已复制 ${text}`);
+  try{navigator.clipboard.writeText(text).then(done,()=>fallbackCopy(text,done))}catch(_){fallbackCopy(text,done)}}
+function fallbackCopy(text,done){const t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();try{document.execCommand("copy");done()}catch(_){toast("请手动复制")}t.remove()}
+let tt;function toast(m){const el=$("toast");el.textContent=m;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,1800)}
+
+/* ============ 标签页 ============ */
+function selectTab(t){QA("[data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  ["preset","lib","ext"].forEach(x=>$("pane-"+x).hidden=x!==t)}
+QA("[data-tab]").forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
+
+/* ============ 启动 ============ */
+let HS_BOOTED=false;
+$("btnToPoster").onclick=()=>{if(window.GEN&&GEN.applyPalette){GEN.applyPalette(S.palette.colors,S.palette.name);toast("已设为动态海报配色，切回其他风格即可看到")}};
+window.HS={boot(){if(HS_BOOTED){if(S.target==="pattern")renderPresets();return}HS_BOOTED=true;
+renderPresets();renderLib();renderCustom();renderPatterns();renderExtract();$("modeDesc").textContent=MODE_DESC.strict;
+  syncPanels();recolor();
+  },palette:()=>S.palette};
+})();
+</script>
 <script>
 (()=>{
 const PHOTO_FLOWERS={};let photoSeq=0,fxVer=0;
@@ -1251,6 +2472,7 @@ let playing=!reduce,last=performance.now();
 function freeCells(o){o.cells.forEach(k=>{if(occ.get(k)===o.id)occ.delete(k)});byId.delete(o.id)}
 function tick(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;
+  if(P.style==='hs'){requestAnimationFrame(tick);return}
   if(playing){
     T+=dt*P.speed;
     if(P.style==='jz')jzTick();
@@ -1296,16 +2518,24 @@ function syncChips(){
   [...$('modSeg').children].forEach(b=>b.setAttribute('aria-pressed',String(!!P.modules[b.dataset.m])));
 }
 function applyPalette(name){
+  if(!PALS[name])return;
   P.palette=name;P.shadeTo=null;P.scheme='';if($('schemeSeg'))press('schemeSeg','s','');P.colors=[...PALS[name].c];P.bg=PALS[name].bg;
   document.querySelectorAll('#swatches [data-ci]').forEach(i=>i.value=P.colors[+i.dataset.ci]);
   $('bgc').value=P.bg;document.body.style.setProperty('--showbg',P.bg);press('palSeg','p',name);
 }
 function setStyle(s){
+  const panelIds=['ratioGroup','motionGroup','colorGroup','textGroup','seedGroup','exportGroup'];
+  if(s==='hs'){
+    P.style='hs';['tradGroup','geoGroup','zjGroup','jzGroup','structGroup',...panelIds].forEach(id=>$(id).hidden=true);
+    $('hsGroup').hidden=false;$('hsStageHost').hidden=false;cv.hidden=true;$('badge').hidden=true;press('styleSeg','s','hs');
+    if(window.HS)HS.boot();return;
+  }
+  $('hsGroup').hidden=true;$('hsStageHost').hidden=true;cv.hidden=false;$('badge').hidden=false;panelIds.forEach(id=>$(id).hidden=false);
   P.style=s;P.angle=s==='geo'?45:0;
-  applyPalette(s==='geo'?'原版':s==='jz'?'窗花':s==='zj'?(P.palette==='原版'||P.palette==='窗花'?'敦煌':P.palette):(P.palette==='原版'||P.palette==='窗花'?'故宫':P.palette));
+  if(!P.cnKeep)applyPalette(s==='geo'?'原版':s==='jz'?'窗花':s==='zj'?(P.palette==='原版'||P.palette==='窗花'?'敦煌':P.palette):(P.palette==='原版'||P.palette==='窗花'?'故宫':P.palette));
   $('tradGroup').hidden=s!=='trad';$('geoGroup').hidden=s!=='geo';$('zjGroup').hidden=s!=='zj';$('jzGroup').hidden=s!=='jz';$('structGroup').hidden=s==='jz';
   document.querySelectorAll('.gridOnly').forEach(e=>e.hidden=s==='zj');
-  if(s==='trad'&&P.arrange!=='free')applyScheme(P.scheme&&SCHEMES[P.scheme]?P.scheme:TPL_SCHEME[P.arrange]);
+  if(s==='trad'&&P.arrange!=='free'&&!P.cnKeep)applyScheme(P.scheme&&SCHEMES[P.scheme]?P.scheme:TPL_SCHEME[P.arrange]);
   if(typeof syncTplUI==='function')syncTplUI();
   press('styleSeg','s',s);press('angleSeg','a',P.angle);regenerate();
   if(s==='jz'){initJZ();selectSlot(jzSlot);setJzMode(jzMode)}
@@ -1357,7 +2587,7 @@ function el(tag,props={},kids=[]){const n=document.createElement(tag);Object.ass
 function tryDownload(url,name){try{const a=el('a',{href:url,download:name});document.body.append(a);a.click();a.remove()}catch(_){}}
 const closeBtn=()=>el('button',{className:'btn',textContent:'关闭',onclick:()=>ov.hidden=true});
 $('png').addEventListener('click',()=>{
-  const oc=document.createElement('canvas');oc.width=W;oc.height=H;render(oc.getContext('2d'),1);
+  const oc=document.createElement('canvas');oc.width=W;oc.height=H;render(oc.getContext('2d'),1);if($('cnStrict').checked)cnSnap(oc);
   const url=oc.toDataURL('image/png');tryDownload(url,`grid-poster-${P.seed}.png`);
   showSheet([el('strong',{textContent:`当前帧 · ${W}×${H}`}),el('img',{src:url,alt:'导出的海报帧'}),
     el('p',{className:'hint',textContent:'右键图片选择“图片另存为”，手机上长按保存。'}),closeBtn()]);
@@ -1389,8 +2619,10 @@ window.addEventListener('pointermove',poke);
 document.addEventListener('fullscreenchange',resize);
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ov.hidden=true;return}
-  if(e.target.matches('input,textarea')||e.metaKey||e.ctrlKey||e.altKey)return;
+  const tg=e.composedPath?e.composedPath()[0]:e.target;
+  if((tg.matches&&tg.matches('input,textarea,select'))||e.metaKey||e.ctrlKey||e.altKey)return;
   const k=e.key.toLowerCase();
+  if(P.style==='hs'&&(k==='r'||k===' '))return;
   if(k==='h')setShow(!document.body.classList.contains('show'));
   else if(k==='f'){if(!document.body.classList.contains('show'))setShow(true);toggleFull()}
   else if(k===' '){e.preventDefault();$('play').click()}
@@ -3213,6 +4445,91 @@ function fxUseAsMain(){
 }
 
 const FX_SAMPLE='data:image/jpeg;base64,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';
+/* =================== 中国传统色 · 规范配比 · 图像取色 · 面积核对 ===================
+   动态海报有 5 个色位：C1 骨架、C2 主纹、C3 点缀、C4 辅纹、底色。规范配色按角色落位：
+   底色→地，主色→C2，辅色→C4，勾线→C1，点缀→C3；缺的色位按面积与明度补齐，多出的颜色并入最相近的色位。 */
+const CNC=window.CNC;
+let SPEC=null,cnTargetI=1;
+const CN_SLOT=['C1 骨架','C2 主纹','C3 点缀','C4 辅纹','底色'];
+const cnLab=h=>CNC.rgbLab(...CNC.hexRgb(h));
+function cnSlots(colors){
+  const left=colors.map(c=>({...c})),s=[null,null,null,null,null];
+  const take=(role,i)=>{if(s[i])return;const j=left.findIndex(c=>c.role===role);if(j>=0)s[i]=left.splice(j,1)[0]};
+  take('底色',4);take('主色',1);take('辅色',3);take('勾线',0);take('点缀',2);
+  left.sort((a,b)=>b.ratio-a.ratio);
+  if(!s[4]&&left.length)s[4]=left.shift();
+  if(!s[1]&&left.length)s[1]=left.shift();
+  if(!s[0]&&left.length){let k=0;left.forEach((c,j)=>{if(cnLab(c.hex)[0]<cnLab(left[k].hex)[0])k=j});s[0]=left.splice(k,1)[0]}
+  if(!s[3]&&left.length)s[3]=left.shift();
+  if(!s[2]&&left.length)s[2]=left.shift();
+  const fb=s[1]||s[3]||s[0]||s[2]||s[4];for(let i=0;i<5;i++)if(!s[i])s[i]={...fb,ratio:0,dup:true};
+  return {slots:s,dropped:left};
+}
+function cnRoles(items){ // 图像取色：最大面积为底色，最深为勾线，其余按面积依次为主色、辅色、点缀
+  const cs=items.map(c=>({...c}));if(!cs.length)return cs;cs[0].role='底色';const rest=cs.slice(1);
+  if(rest.length>=3){let d=rest[0];for(const c of rest)if(cnLab(c.hex)[0]<cnLab(d.hex)[0])d=c;d.role='勾线'}
+  let n=0;for(const c of rest){if(c.role)continue;c.role=n===0?'主色':n===1?'辅色':'点缀';n++}return cs}
+function cnSync(){for(let i=0;i<5;i++){const h=i<4?P.colors[i]:P.bg,n=CNC.nameOf(h),e=$('cnNm'+i);e.textContent=n||'自定';e.title=n?`${n} ${h.toUpperCase()}`:'不在传统色库中'}}
+function cnRefresh(){
+  document.querySelectorAll('#swatches [data-ci]').forEach(i=>i.value=P.colors[+i.dataset.ci]);$('bgc').value=P.bg;
+  document.body.style.setProperty('--showbg',P.bg);ensureHalo();GROUND=null;BORDER=null;JINDI=null;cnSync();cnMeter();
+}
+function cnApply(colors,name,note){
+  const {slots,dropped}=cnSlots(colors);
+  for(let i=0;i<4;i++)P.colors[i]=slots[i].hex;P.bg=slots[4].hex;P.shadeTo=P.bg;P.scheme='';P.palette='';P.cnKeep=true;
+  press('palSeg','p','');press('schemeSeg','s','');
+  const m=new Map();slots.forEach(s=>{if(s.dup)return;const e=m.get(s.hex);if(e)e.ratio+=s.ratio;else m.set(s.hex,{hex:s.hex,name:s.name,ratio:s.ratio})});
+  for(const d of dropped){let best=null,bd=1e9;const b=cnLab(d.hex);for(const v of m.values()){const a=cnLab(v.hex),dd=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);if(dd<bd){bd=dd;best=v}}if(best)best.ratio+=d.ratio}
+  SPEC={name,items:[...m.values()]};
+  $('schemeRule').textContent=`${name}${note?'（'+note+'）':''}：`+slots.map((s,i)=>`${CN_SLOT[i]} ${s.name}${s.dup?' 沿用':' '+s.ratio+'%'}`).join('，')+
+    (dropped.length?`。动态海报只有 5 个色位，${dropped.map(d=>d.name+' '+d.ratio+'%').join('、')} 并入最相近的色位。`:'。');
+  cnRefresh();cnRenderPals();
+}
+const cnBarHtml=list=>list.map(c=>`<i style="width:${c.ratio}%;background:${c.hex}" title="${c.name} ${(+c.ratio).toFixed(1)}%"></i>`).join('');
+function cnRenderPals(){
+  $('cnPals').replaceChildren(...CNC.PRESETS.map(p=>el('button',{type:'button',className:'cnPal',onclick:()=>cnApply(p.colors,p.name,p.note),
+    innerHTML:`<span>${p.name} <small>${p.note}</small></span><div class="cnBar">${cnBarHtml(p.colors)}</div><small>${p.colors.map(c=>c.name+' '+c.ratio+'%').join(' · ')}${p.colors.length>5?'（超出 5 色位，多出的并入相近色）':''}</small>`},[])));
+  [...$('cnPals').children].forEach((b,i)=>b.setAttribute('aria-pressed',String(!!SPEC&&SPEC.name===CNC.PRESETS[i].name)));
+}
+function cnRenderLib(){
+  $('cnLib').replaceChildren(...Object.entries(CNC.LIB).map(([gname,list])=>{const box=el('div',{},[el('b',{textContent:gname},[])]);
+    const sw=el('div',{className:'cnSw'},list.map(([n,h])=>el('button',{type:'button',title:`${n} ${h.toUpperCase()}`,ariaLabel:`${n} ${h}`,style:`background:${h}`,
+      onmouseenter:()=>{$('cnTip').textContent=`${n}  ${h.toUpperCase()}  RGB ${CNC.hexRgb(h).join(',')}`},
+      onclick:()=>{if(cnTargetI<4)P.colors[cnTargetI]=h;else{P.bg=h;P.shadeTo=h}P.cnKeep=true;SPEC=null;press('palSeg','p','');press('schemeSeg','s','');
+        $('schemeRule').textContent=`${CN_SLOT[cnTargetI]} 设为 ${n} ${h.toUpperCase()}。自选配色没有规范比例，面积核对只显示实测。`;cnRefresh();cnRenderPals()}},[])));
+    box.append(sw);return box}));
+}
+$('cnTarget').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cnTargetI=+b.dataset.i;press('cnTarget','i',cnTargetI)});
+$('cnImg').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const img=new Image();
+  img.onload=()=>{const items=cnRoles(CNC.extract(img,5,true));if(!items.length){$('cnExt').textContent='这张图可用的像素太少，换一张试试。';return}
+    $('cnExt').replaceChildren(el('img',{src:img.src,alt:'参考图',style:'max-width:100%;max-height:120px;object-fit:contain;border-radius:4px'},[]),
+      el('div',{className:'cnBar',innerHTML:cnBarHtml(items)},[]),
+      ...items.map(c=>el('div',{className:'cnRow',innerHTML:`<i style="background:${c.hex}"></i><span>${c.name} · ${c.role}</span><span>${c.hex.toUpperCase()} ${c.ratio}%</span>`},[])),
+      el('p',{className:'hint',textContent:'已吸附到最近的传统色，比例按参考图实际面积取整。'},[]),
+      el('button',{type:'button',className:'btn primary',textContent:'用作海报配色',onclick:()=>cnApply(items,'图像取色','按参考图面积')},[]))};
+  img.onerror=()=>{$('cnExt').textContent='这张图读不出来，换一张试试。'};img.src=URL.createObjectURL(f)});
+const cnMc=document.createElement('canvas');
+function cnPal(){return [...new Set([...P.colors.slice(0,4),P.bg].map(h=>h.toLowerCase()))]}
+function cnMeter(){
+  if(P.style==='hs'||$('colorGroup').hidden||document.body.classList.contains('show'))return;
+  const s=Math.min(.14,200/Math.max(W,H));cnMc.width=Math.max(1,Math.round(W*s));cnMc.height=Math.max(1,Math.round(H*s));
+  const c=cnMc.getContext('2d',{willReadFrequently:true});try{render(c,s)}catch(_){return}
+  const pal=cnPal(),rgb=pal.map(CNC.hexRgb),d=c.getImageData(0,0,cnMc.width,cnMc.height).data,N=cnMc.width*cnMc.height,cnt=new Array(pal.length).fill(0);
+  for(let i=0;i<N;i++){let b=0,bd=1e9;for(let j=0;j<rgb.length;j++){const q=rgb[j],dd=(d[i*4]-q[0])**2+(d[i*4+1]-q[1])**2+(d[i*4+2]-q[2])**2;if(dd<bd){bd=dd;b=j}}cnt[b]++}
+  const real=pal.map((h,j)=>({hex:h,name:CNC.nameOf(h)||'自定',ratio:cnt[j]/N*100}));
+  $('cnBarReal').innerHTML=cnBarHtml(real);$('cnBarSpec').innerHTML=SPEC?cnBarHtml(SPEC.items):'';
+  $('cnRows').replaceChildren(...real.map(r=>{const sp=SPEC&&SPEC.items.find(x=>x.hex.toLowerCase()===r.hex);
+    return el('div',{className:'cnRow',innerHTML:`<i style="background:${r.hex}"></i><span>${r.name}</span><span>实测 ${r.ratio.toFixed(1)}%${sp?' · 规范 '+sp.ratio+'%':''}</span>`},[])}));
+}
+function cnSnap(cv2){const c=cv2.getContext('2d'),im=c.getImageData(0,0,cv2.width,cv2.height),d=im.data,pal=cnPal().map(CNC.hexRgb);
+  for(let i=0;i<d.length;i+=4){let b=pal[0],bd=1e9;for(const q of pal){const dd=(d[i]-q[0])**2+(d[i+1]-q[1])**2+(d[i+2]-q[2])**2;if(dd<bd){bd=dd;b=q}}d[i]=b[0];d[i+1]=b[1];d[i+2]=b[2];d[i+3]=255}c.putImageData(im,0,0)}
+// 用户改回原有的配色规范 / 自由配色 / 色盘时，退出传统色锁定
+$('palSeg').addEventListener('click',()=>{P.cnKeep=false;SPEC=null;cnSync();cnRenderPals()});
+$('schemeSeg').addEventListener('click',()=>{P.cnKeep=false;SPEC=null;cnSync();cnRenderPals()});
+$('swatches').addEventListener('input',()=>{SPEC=null;P.cnKeep=true;cnSync();cnRenderPals()});
+window.GEN={applyPalette:(colors,name)=>cnApply(colors,name,'来自纹样换色')};
+cnRenderPals();cnRenderLib();cnSync();setInterval(()=>{if(!document.hidden)cnMeter()},1000);
+
 fxBind();fxSyncInputs();
 resize();setStyle('jz');
 if(!playing)$('play').textContent='播放';
