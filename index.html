@@ -637,7 +637,7 @@ td.name small{color:var(--ink-3);margin-left:6px}
 canvas#out{max-height:calc(100vh - 360px)}
 .hs-note{font-size:12px;color:var(--ink-3);margin:0 0 12px;line-height:1.6}
 </style>
-<p class="hs-note">中国传统色逐像素换色：内置纹样按传统构件着色，也可上传自己的图像。色值取自「中国色」数据（据《色谱》整理），配比为本项目的设计规范。</p>
+<p class="hs-note">中国传统色逐像素换色：纹样取自本生成器的「中国纹样」与「藻井宝相花」，也可上传自己的图像。色值取自「中国色」数据（据《色谱》整理），配比为本项目的设计规范。</p>
 <div class="stage-h">
       <div class="seg" role="group" aria-label="换色对象">
         <button aria-pressed="true" data-target="pattern" id="tgtPattern">内置纹样</button>
@@ -659,7 +659,7 @@ canvas#out{max-height:calc(100vh - 360px)}
 
     <div class="panel-b" id="pane-preset">
       <p class="label">配色方案 · 配比锁定</p>
-      <p class="hint" id="fitHint" style="margin:-2px 0 8px">纹样模式下，标签显示该配色套进当前纹样需要修边的面积：越小越贴合原有形制。</p>
+      <p class="hint" id="fitHint" style="margin:-2px 0 8px">纹样模式下，标签显示该配色套进当前纹样后的面积偏差：越小越贴合纹样原有结构。</p>
       <div class="pal-list" id="palList"></div>
     </div>
 
@@ -697,9 +697,11 @@ canvas#out{max-height:calc(100vh - 360px)}
     <div class="group" id="patGroup">
       <p class="label">形制规范</p>
       <p class="mode-desc" id="patSpec"></p>
+      <div class="seg" role="group" aria-label="纹样换色方式" id="genModeSeg"><button aria-pressed="true" data-g="role">按色位吸附</button><button aria-pressed="false" data-g="tone">叠晕分层 · 严格配比</button></div>
+      <p class="hint" id="genModeDesc"></p>
       <label class="check"><input type="checkbox" id="calib" checked> 按配比校准形制参数</label>
       <label class="check"><input type="checkbox" id="exact" checked> 精确修边（像素级配比）</label>
-      <p class="hint">校准只调花型大小、线宽与退晕宽度；修边让不足的颜色沿轮廓等距外扩补足面积。构件与结构不变。两项都关闭时按标准形制绘制，偏差如实显示。</p>
+      <p class="hint">纹样直接取自「中国纹样」各构成规范与「藻井宝相花」：按 5 个色位上色后逐像素吸附到配色标准色，叠晕过渡归入最近的标准色；修边让不足的颜色沿轮廓等距外扩补足面积，偏差超过 8% 时不强行修边。</p>
       <p class="hint" id="fitNote" style="margin-top:6px"></p>
       <div class="btn-row" style="margin-top:10px"><button class="btn" id="btnReseed" hidden>换一组冰裂</button></div>
     </div>
@@ -1345,7 +1347,7 @@ function calibrate(m,P0,colors,map,res,cx){const keys=Object.keys(m.params),k=co
   return P}
 
 /* ============ 状态 ============ */
-const S = {palette:PRESETS[4], target:"pattern", pattern:"baoxiang", density:2, calib:true, exact:true, seed:7, mode:"strict", invert:false, texture:0,
+const S = {palette:PRESETS[1], target:"pattern", pattern:"chanzhi", genMode:"role", density:2, calib:true, exact:true, seed:7, mode:"strict", invert:false, texture:0,
   uploadImg:null, refImg:null, custom:[], extracted:null, last:null};
 const $ = id => { for (const r of HS_ROOTS) { const e = r.getElementById(id); if (e) return e } return null };
 const QA = sel => HS_ROOTS.flatMap(r => [...r.querySelectorAll(sel)]);
@@ -1362,14 +1364,13 @@ function fitPattern(pk,colors){const m=MOTIFS[pk];const cx={tiles:S.density,seed
   const a=layerAreas(m,P,res,cx),ca=new Array(colors.length).fill(0);a.forEach((v,i)=>ca[map[i]]+=v);
   const before=Math.max(...ca.map((v,c)=>Math.abs(v*100-colors[c].ratio)));const r={key,map,P,before};FIT.set(key,r);return r}
 let scanTimer=null;
-function scanFits(){clearTimeout(scanTimer);if(S.target!=="pattern")return;const pk=S.pattern,m=MOTIFS[pk];let i=0;
+function scanFits(){clearTimeout(scanTimer);if(S.target!=="pattern")return;if(S.genMode==="tone"){QA(".pal .fit").forEach(el=>{el.textContent="逐像素一致";el.className="fit fit-ok"});return}const pk=S.pattern;let i=0;
   const step=()=>{if(S.target!=="pattern"||S.pattern!==pk||sHost.hidden)return;
-    while(i<PRESETS.length){const p=PRESETS[i++];const colors=patternRoles(p.colors);if(colors.length>m.layers.length){setBadge(i-1,null);continue}
-      const r=fitPattern(pk,colors);setBadge(i-1,r.before);scanTimer=setTimeout(step,40);return}};
+    if(i<PRESETS.length){const p=PRESETS[i++];setBadge(i-1,genFit(pk,p.colors));scanTimer=setTimeout(step,30)}};
   scanTimer=setTimeout(step,300)}
 function setBadge(i,v){const el=QA(`.pal[data-i="${i}"] .fit`)[0];if(!el)return;
   if(v==null){el.textContent="色数超出";el.className="fit fit-bad";return}
-  const lim=MOTIFS[S.pattern].trim||8;el.textContent=v<=Math.min(2,lim/2)?`贴合 · 修边 ${v.toFixed(1)}%`:v<=lim?`微调 · 修边 ${v.toFixed(1)}%`:`不适配 · 差 ${v.toFixed(0)}%`;el.className="fit "+(v<=Math.min(2,lim/2)?"fit-ok":v<=lim?"fit-mid":"fit-bad")}
+  const lim=GEN_LIMIT;el.textContent=v<=Math.min(2,lim/2)?`贴合 · 修边 ${v.toFixed(1)}%`:v<=lim?`微调 · 修边 ${v.toFixed(1)}%`:`面积偏差 ${v.toFixed(0)}%`;el.className="fit "+(v<=Math.min(2,lim/2)?"fit-ok":"fit-mid")}
 function patternColoring(W){
   const m=MOTIFS[S.pattern],colors=patternRoles(S.palette.colors),k=colors.length;
   if(k>m.layers.length)return {error:`${m.name}共有 ${m.layers.length} 个构件层，当前配色有 ${k} 色。请减到 ${m.layers.length} 色以内，或改用「我的图像」。`};
@@ -1381,15 +1382,43 @@ function patternColoring(W){
   for(let i=0;i<N;i++){const c=PCACHE.map[lab[i]];ci[i]=c;cnt[c]++}
   const before=Math.max(...cnt.map((v,c)=>Math.abs(v/N*100-colors[c].ratio)));let moved=0;
   const LIMIT=MOTIFS[S.pattern].trim||8;let skipped=false;
-  if(S.exact){if(before<=LIMIT)moved=balance(ci,W,cnt,apportion(colors.map(c=>c.ratio),N));else skipped=true}
+  if(S.exact){if(before<=LIMIT)moved=balance(ci,W,W,cnt,apportion(colors.map(c=>c.ratio),N));else skipped=true}
   const img=new ImageData(W,W),d=img.data;
   for(let i=0;i<N;i++){const rgb=cols[ci[i]].rgb;d[i*4]=rgb[0];d[i*4+1]=rgb[1];d[i*4+2]=rgb[2];d[i*4+3]=255}
   return {img,cols,cnt,n:N,before,moved:moved/N*100,skipped}}
+/* 生成器纹样换色：取生成器渲染的一帧，逐像素吸附到配色标准色，再按规范比例精确修边 */
+const GEN_LIMIT=8;
+function genColoring(maxSide){
+  const {slots,items}=GEN.spec(S.palette.colors),five=slots.map(x=>x.hex);
+  const cv=GEN.snapshot(S.pattern,five,maxSide),w=cv.width,h=cv.height,N=w*h,d=cv.getContext("2d").getImageData(0,0,w,h).data;
+  const cols=items.map(it=>{const rgb=hexRgb(it.hex);return {...it,rgb,lab:rgbLab(...rgb)}}),k=cols.length;
+  const ci=new Uint8Array(N),cnt=new Array(k).fill(0);
+  for(let i=0;i<N;i++){let b=0,bd=1e9;for(let j=0;j<k;j++){const q=cols[j].rgb,dd=(d[i*4]-q[0])**2+(d[i*4+1]-q[1])**2+(d[i*4+2]-q[2])**2;if(dd<bd){bd=dd;b=j}}ci[i]=b;cnt[b]++}
+  const before=Math.max(...cnt.map((v,c)=>Math.abs(v/N*100-cols[c].ratio)));let moved=0,skipped=false;
+  if(S.exact){if(before<=GEN_LIMIT)moved=balance(ci,w,h,cnt,apportion(cols.map(c=>c.ratio),N));else skipped=true}
+  const img=new ImageData(w,h),o=img.data;
+  for(let i=0;i<N;i++){const rgb=cols[ci[i]].rgb;o[i*4]=rgb[0];o[i*4+1]=rgb[1];o[i*4+2]=rgb[2];o[i*4+3]=255}
+  return {img,cols,cnt,n:N,before,moved:moved/N*100,skipped,w,h}}
+const GFIT=new Map();
+function genFit(key,colors){const k=key+"|"+colors.map(c=>c.hex+c.ratio+c.role).join();if(GFIT.has(k))return GFIT.get(k);
+  const {slots,items}=GEN.spec(colors),cv=GEN.snapshot(key,slots.map(x=>x.hex),320),w=cv.width,h=cv.height,N=w*h,d=cv.getContext("2d").getImageData(0,0,w,h).data;
+  const rgb=items.map(it=>hexRgb(it.hex)),cnt=new Array(items.length).fill(0);
+  for(let i=0;i<N;i++){let b=0,bd=1e9;for(let j=0;j<rgb.length;j++){const q=rgb[j],dd=(d[i*4]-q[0])**2+(d[i*4+1]-q[1])**2+(d[i*4+2]-q[2])**2;if(dd<bd){bd=dd;b=j}}cnt[b]++}
+  const v=Math.max(...cnt.map((c,j)=>Math.abs(c/N*100-items[j].ratio)));GFIT.set(k,v);return v}
+/* 叠晕分层：把生成器渲染的一帧按明度排序，按规范比例逐像素切层，配色从深到浅对应——面积精确到像素，纹样形状不动 */
+function genTone(maxSide){
+  const {slots}=GEN.spec(S.palette.colors);
+  const cv=GEN.snapshot(S.pattern,slots.map(x=>x.hex),maxSide);cv.naturalWidth=cv.width;cv.naturalHeight=cv.height;
+  buildImageTarget(cv);const cols=orderedCols(),k=cols.length,idx=assignStrict(cols);
+  const {N,w,h}=T,cnt=new Array(k).fill(0),img=new ImageData(w,h),o=img.data;
+  for(let i=0;i<N;i++){const c=idx[i];cnt[c]++;const rgb=cols[c].rgb;o[i*4]=rgb[0];o[i*4+1]=rgb[1];o[i*4+2]=rgb[2];o[i*4+3]=255}
+  T.kind="pattern";return {img,cols,cnt,n:N,before:0,moved:0,skipped:false,w,h,tone:true}}
+const patName=()=>(GEN.patterns.find(p=>p[0]===S.pattern)||["",""])[1];
 /* 精确修边：缺量的颜色沿自身边界等距外扩，只取离它最近的若干像素（从富余色中取），直到每色像素数与规范比例完全一致 */
-function balance(ci,W,cnt,target){const N=W*W,k=cnt.length;let moved=0;
+function balance(ci,W,H,cnt,target){H=H||W;const N=W*H,k=cnt.length;let moved=0;
   for(let guard=0;guard<k*k*2;guard++){
     let B=-1,def=0;for(let c=0;c<k;c++){const dd=target[c]-cnt[c];if(dd>def){def=dd;B=c}}if(B<0)break;
-    const m=new Uint8Array(N);for(let i=0;i<N;i++)m[i]=ci[i]!==B?1:0;const dist=edt(m,W);
+    const m=new Uint8Array(N);for(let i=0;i<N;i++)m[i]=ci[i]!==B?1:0;const dist=edt(m,W,H);
     let best=-1,bestScore=Infinity,bestTake=0;
     for(let A=0;A<k;A++){const sur=cnt[A]-target[A];if(A===B||sur<=0)continue;const take=Math.min(def,sur);
       const h=new Uint32Array(4096);for(let i=0;i<N;i++)if(ci[i]===A)h[Math.min(4095,dist[i]|0)]++;
@@ -1469,11 +1498,12 @@ function orderedCols(){
   const ord=cols.slice().sort((a,b)=>a.lab[0]-b.lab[0]);if(S.invert)ord.reverse();return ord;
 }
 function recolor(){
-  if(S.target==="pattern"){$("busy").hidden=false;setTimeout(()=>{const W=1024,r=patternColoring(W);$("busy").hidden=true;
+  if(S.target==="pattern"){$("busy").hidden=false;setTimeout(()=>{const r=S.genMode==="tone"?genTone(1024):genColoring(1024),W=r.w,Hh=r.h;$("busy").hidden=true;
     if(r.error){S.last=null;ctx.clearRect(0,0,out.width,out.height);$("status").className="status s-bad";$("status").textContent="颜色数超出构件层";$("tbody").innerHTML=`<tr><td colspan="8">${r.error}</td></tr>`;$("barSpec").innerHTML=$("barReal").innerHTML="";return}
-    T={w:W,h:W,N:W*W,n:W*W,mask:new Uint8Array(W*W).fill(1),kind:"pattern"};out.width=W;out.height=W;ctx.putImageData(r.img,0,0);S.last=r;renderVerify();
-    $("fitNote").textContent=r.skipped?`此配色的比例与「${MOTIFS[S.pattern].name}」的构件面积差距过大（需修边 ${r.before.toFixed(1)}%），为保形制未强行修边。请选左侧标为「贴合」或「微调」的配色。`:S.exact?`形制校准后最大偏差 ${r.before.toFixed(1)}%，修边调整了 ${r.moved.toFixed(2)}% 的像素。`:`当前最大偏差 ${r.before.toFixed(1)}%。`;
-    if(r.skipped){$("status").className="status s-bad";$("status").textContent="配色与纹样形制不匹配"}},30);return}
+    T={w:W,h:Hh,N:W*Hh,n:W*Hh,mask:new Uint8Array(W*Hh).fill(1),kind:"pattern"};out.width=W;out.height=Hh;ctx.putImageData(r.img,0,0);S.last=r;renderVerify();
+    if(r.tone){$("fitNote").textContent="按明度逐像素切层：深色线条与主纹取深色，叠晕与地取浅色，每色面积与规范比例逐像素一致。";return}
+    $("fitNote").textContent=r.skipped?`保持「${patName()}」原样：面积由纹样决定，与规范比例最大相差 ${r.before.toFixed(1)}%，超过 8% 不做修边。需要严格比例时切到「叠晕分层」。`:S.exact?`吸附到配色后最大偏差 ${r.before.toFixed(1)}%，修边调整了 ${r.moved.toFixed(2)}% 的像素。`:`当前最大偏差 ${r.before.toFixed(1)}%。`;
+    if(r.skipped){$("status").className="status s-warn";$("status").textContent=`色值严格一致 · 面积最大偏差 ${r.before.toFixed(1)}%`}},30);return}
   if(!T)return;$("busy").hidden=false;
   requestAnimationFrame(()=>setTimeout(()=>{
     const cols=orderedCols(),k=cols.length;
@@ -1509,7 +1539,7 @@ function renderVerify(){
   else if(maxDev<0.05){st.className="status s-warn";st.textContent="配比一致 · 肌理致色值浮动"}
   else{st.className="status "+(maxDev<3?"s-warn":"s-bad");st.textContent=`最大偏差 ${maxDev.toFixed(1)}%`}
   $("verifyTitle").textContent="配比核对 · "+S.palette.name;
-  $("targetInfo").textContent=T.kind==="pattern"?`${MOTIFS[S.pattern].name} · 按构件着色${S.calib?" · 已按配比校准":""}`:`上传图像 · ${T.w}×${T.h}px${T.n<T.N?" · 透明区不计入":""}`;
+  $("targetInfo").textContent=T.kind==="pattern"?`${patName()} · 生成器纹样逐像素吸附`:`上传图像 · ${T.w}×${T.h}px${T.n<T.N?" · 透明区不计入":""}`;
 }
 
 /* ============ UI：传统配色 ============ */
@@ -1591,14 +1621,14 @@ function renderExtract(){const ex=S.extracted;if(!ex){$("extResult").innerHTML=`
 }
 
 /* ============ UI：目标 ============ */
-function renderPatterns(){$("patRow").innerHTML=Object.entries(MOTIFS).map(([k,p])=>`<button class="chip" data-p="${k}" aria-pressed="${S.target==="pattern"&&S.pattern===k}">${p.name}</button>`).join("")}
-$("patRow").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;S.pattern=b.dataset.p;S.density=MOTIFS[S.pattern].dens||2;$("density").value=S.density;$("densOut").textContent=S.density;setTarget("pattern")});
+function renderPatterns(){$("patRow").innerHTML=GEN.patterns.map(([k,n])=>`<button class="chip" data-p="${k}" aria-pressed="${S.target==="pattern"&&S.pattern===k}">${n}</button>`).join("")}
+$("patRow").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;S.pattern=b.dataset.p;setTarget("pattern")});
 $("density").oninput=e=>{$("densOut").textContent=e.target.value};
 $("density").onchange=e=>{S.density=+e.target.value;if(S.target==="pattern"){recolor();if(!MOTIFS[S.pattern].tiled)renderPresets()}};
 function setTarget(t){
   if(t==="upload"&&!S.uploadImg){$("tgtFile").click();return}
   S.target=t;$("tgtPattern").setAttribute("aria-pressed",t==="pattern");$("tgtUpload").setAttribute("aria-pressed",t==="upload");
-  $("densRow").hidden=t!=="pattern";renderPatterns();syncPanels();
+  $("densRow").hidden=true;renderPatterns();syncPanels();
   if(t!=="pattern")buildImageTarget(S.uploadImg);recolor();
 }
 $("tgtPattern").onclick=()=>setTarget("pattern");$("tgtUpload").onclick=()=>setTarget("upload");
@@ -1622,8 +1652,11 @@ HS_ROOTS.forEach(r=>r.addEventListener("click",e=>{const b=e.target.closest("[da
 
 function syncPanels(){const pat=S.target==="pattern";$("patGroup").hidden=!pat;QA(".img-only").forEach(el=>el.hidden=pat);
   $("ctrlTitle").textContent=pat?"纹样":"映射";$("btnCompare").hidden=pat;$("partsTh").hidden=false;
-  const m=MOTIFS[S.pattern];$("patSpec").textContent=m.spec;$("btnReseed").hidden=!(pat&&m.reseed);renderPresets()}
+  $("patSpec").textContent=GEN.rule(S.pattern);$("genModeDesc").textContent=GEN_MODE_DESC[S.genMode];$("exact").closest("label").hidden=S.genMode==="tone";$("btnReseed").hidden=true;$("calib").closest("label").hidden=true;$("densRow").hidden=true;renderPresets()}
 $("calib").onchange=e=>{S.calib=e.target.checked;recolor();renderPresets()};
+const GEN_MODE_DESC={tone:"按明度把画面从深到浅排序，配色也从深到浅对应，按规范比例逐像素切层，面积逐像素一致。配色比例与纹样结构差距大时（例如地色规定得比纹样实际留地少很多），多出的面积会变成大片晕边，画面会乱。",
+  role:"按生成器的 5 个色位（骨架、主纹、点缀、辅纹、底色）上色，再逐像素吸附到标准色，保持生成器原本的样子。面积由纹样决定，偏差在 8% 以内时沿轮廓修边补齐，超过则如实显示。"};
+QA("[data-g]").forEach(b=>b.onclick=()=>{S.genMode=b.dataset.g;QA("[data-g]").forEach(x=>x.setAttribute("aria-pressed",x===b));$("genModeDesc").textContent=GEN_MODE_DESC[S.genMode];$("exact").closest("label").hidden=S.genMode==="tone";renderPresets();recolor()});
 $("exact").onchange=e=>{S.exact=e.target.checked;recolor()};
 $("btnReseed").onclick=()=>{S.seed=(S.seed*7+13)%9973;recolor();renderPresets()};
 $("patRow").addEventListener("click",()=>syncPanels());
@@ -1637,7 +1670,7 @@ async function save(filename,data,fallback){
   fallback();
 }
 const safeName=()=>S.palette.name.replace(/[\\/:*?"<>|·\s]+/g,"-");
-$("btnPng").onclick=()=>{if(!S.last)return;let img=S.last.img;if(S.target==="pattern"){toast("正在生成 2048px…");img=patternColoring(2048).img}
+$("btnPng").onclick=()=>{if(!S.last)return;let img=S.last.img;if(S.target==="pattern"){toast("正在生成 2048px…");img=(S.genMode==="tone"?genTone(2048):genColoring(2048)).img}
   const c=document.createElement("canvas");c.width=img.width;c.height=img.height;c.getContext("2d").putImageData(img,0,0);
   c.toBlob(b=>save(`纹样换色-${safeName()}.png`,b,()=>{$("ovImg").src=c.toDataURL("image/png");$("overlay").hidden=false}),"image/png")};
 $("btnJson").onclick=()=>{if(!S.last)return;const j=paletteJSON();save(`配色-${safeName()}.json`,j,()=>copy(j,"JSON 已复制到剪贴板"))};
@@ -4707,7 +4740,29 @@ function cnSnap(cv2){const c=cv2.getContext('2d'),im=c.getImageData(0,0,cv2.widt
 $('palSeg').addEventListener('click',()=>{P.cnKeep=false;SPEC=null;cnSync();cnRenderPals()});
 $('schemeSeg').addEventListener('click',()=>{P.cnKeep=false;SPEC=null;cnSync();cnRenderPals()});
 $('swatches').addEventListener('input',()=>{SPEC=null;P.cnKeep=true;cnSync();cnRenderPals()});
-window.GEN={applyPalette:(colors,name)=>cnApply(colors,name,'来自纹样换色')};
+function cnSpec(colors){const {slots,dropped}=cnSlots(colors);const m=new Map();
+  slots.forEach((s,i)=>{const e=m.get(s.hex);if(e){e.ratio+=s.dup?0:s.ratio;e.parts.push(CN_SLOT[i])}else m.set(s.hex,{hex:s.hex,name:s.name,role:s.role||'',ratio:s.dup?0:s.ratio,parts:[CN_SLOT[i]]})});
+  for(const d of dropped){let best=null,bd=1e9;const b=cnLab(d.hex);for(const v of m.values()){const a=cnLab(v.hex),dd=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);if(dd<bd){bd=dd;best=v}}if(best){best.ratio+=d.ratio;best.merged=(best.merged||[]).concat(d.name)}}
+  return {slots,items:[...m.values()],dropped}}
+/* 纹样换色用：按给定 5 色、关闭生长更替，渲染某个构成规范（或藻井宝相花）完全展开时的一帧；渲染完恢复原状态 */
+const HS_PATTERNS=[...$('arrSeg').children].filter(b=>b.dataset.a!=='free').map(b=>[b.dataset.a,b.textContent]).concat([['zj','藻井宝相花']]);
+const ZJ_RULE='藻井宝相花：方井套圆井，井心为多层宝相花，各层瓣型相间、层层叠晕；圆井外缀联珠与卷草环带，外沿垂幔，四角岔角花，方井外铺底纹。';
+function genSnapshot(key,five,maxSide,opts){
+  const keep={style:P.style,arrange:P.arrange,colors:[...P.colors],bg:P.bg,shadeTo:P.shadeTo,text:P.text,churn:P.churn,tplScale:P.tplScale,weight:P.weight,tplGround:P.tplGround,unit:P.unit},keepT=T,keepPtr=ptr.on;
+  try{
+    P.style=key==='zj'?'zj':'trad';if(key!=='zj')P.arrange=key;
+    for(let i=0;i<4;i++)P.colors[i]=five[i];P.bg=five[4];P.shadeTo=P.bg;ensureHalo();GROUND=null;BORDER=null;JINDI=null;
+    P.text='';P.churn=false;ptr.on=false;if(opts)Object.assign(P,opts);
+    regenerate();T=key==='zj'?14:24;
+    const s=Math.min(1,maxSide/Math.max(W,H)),oc=document.createElement('canvas');oc.width=Math.round(W*s);oc.height=Math.round(H*s);
+    render(oc.getContext('2d'),s);return oc;
+  }finally{
+    Object.assign(P,{style:keep.style,arrange:keep.arrange,bg:keep.bg,shadeTo:keep.shadeTo,text:keep.text,churn:keep.churn,tplScale:keep.tplScale,weight:keep.weight,tplGround:keep.tplGround,unit:keep.unit});P.colors=keep.colors;
+    GROUND=null;BORDER=null;JINDI=null;T=keepT;ptr.on=keepPtr;
+  }
+}
+window.GEN={applyPalette:(colors,name)=>cnApply(colors,name,'来自纹样换色'),patterns:HS_PATTERNS,
+  rule:k=>k==='zj'?ZJ_RULE:(TPL_RULES[k]||HS_PATTERNS.find(p=>p[0]===k)?.[1]||''),snapshot:genSnapshot,spec:cnSpec};
 cnRenderPals();cnRenderLib();cnSync();setInterval(()=>{if(!document.hidden)cnMeter()},1000);
 
 fxBind();fxSyncInputs();
